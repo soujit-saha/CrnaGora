@@ -79,11 +79,10 @@ const UpgradePlan = ({ navigation }: any) => {
         try {
             // WARNING: Creating a PaymentIntent directly from the app is ONLY for testing.
             // In production, your SECRET KEY should NEVER be in the app. This must be moved to your backend.
-            const secretKey = "sk_test_51NdpkRBuHqQNZg72VM5ngF17FUi5lff7whLJdPy4IlFn6ZoymSeIvnOWVqB5NfaTHat6yHTCpJIPMCYHcp0HmxUm00I84mXZRh";
+
 
             // Convert price to cents (Stripe requires smallest currency unit)
             const price = parseFloat(selectedPlan?.monthly_price || selectedPlan?.price?.replace('$', '') || '10.00');
-            const amountInCents = Math.round(price * 100);
 
             // https://api.stripe.com/v1/payment_intents
             // Fetch PaymentIntent from Stripe API directly
