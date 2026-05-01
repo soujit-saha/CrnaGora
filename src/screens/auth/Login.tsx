@@ -1,0 +1,228 @@
+import React from 'react';
+import {
+    StyleSheet,
+    Text,
+    View,
+    TouchableOpacity,
+    Image,
+    StatusBar,
+    TextInput,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { COLORS, FONTS, ICONS } from '../../utils/constants';
+import { ms, mvs } from '../../utils/helper/metric';
+import normalize from '../../utils/helper/normalize';
+import BackButtonHeader from '../../component/BackButtonHeader';
+import CustomButton from '../../component/CustomButton';
+import { navigate } from '../../utils/helper/RootNavigation';
+
+const Login = ({ navigation }: any) => {
+    return (
+        <SafeAreaView style={styles.container}>
+            <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+
+            {/* Header / Back Button */}
+            <BackButtonHeader />
+
+            {/* Content Body */}
+            <View style={styles.content}>
+                {/* Logo */}
+                <Image
+                    source={ICONS.logo}
+                    style={styles.logo}
+                    resizeMode="contain"
+                />
+
+                {/* Title */}
+                <Text style={styles.title}>Sign in</Text>
+
+
+                <View style={styles.inputWrapper}>
+                    <Text style={styles.floatingLabel}>Email/Phone No.</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="331 623 8413"
+                        placeholderTextColor={COLORS.black}
+                        keyboardType="default"
+                    />
+                </View>
+
+                {/* Primary Email Button */}
+                <CustomButton
+                    title="Send OTP"
+                    onPress={() => { }}
+                    containerStyle={{ marginBottom: mvs(20) }}
+                />
+
+                {/* Secondary Phone Button */}
+                {/* <TouchableOpacity style={styles.secondaryButton} activeOpacity={0.7} onPress={() => navigate('InputPage')}>
+                    <Text style={styles.secondaryButtonText}>Use phone number</Text>
+                </TouchableOpacity> */}
+
+                {/* Divider */}
+                <View style={styles.dividerContainer}>
+                    <View style={styles.dividerLine} />
+                    <Text style={styles.dividerText}>or sign up with</Text>
+                    <View style={styles.dividerLine} />
+                </View>
+
+                {/* Social Login Buttons */}
+                <View style={styles.socialContainer}>
+                    <TouchableOpacity style={styles.socialButton} activeOpacity={0.7}>
+                        <Image
+                            source={ICONS.facebook}
+                            style={styles.socialIcon}
+                            resizeMode="contain"
+                        />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.socialButton} activeOpacity={0.7}>
+                        <Image
+                            source={ICONS.google}
+                            style={styles.socialIcon}
+                            resizeMode="contain"
+                        />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.socialButton} activeOpacity={0.7}>
+                        <Image
+                            source={ICONS.apple}
+                            style={styles.socialIcon}
+                            resizeMode="contain"
+                        />
+                    </TouchableOpacity>
+                </View>
+            </View>
+
+            {/* Footer */}
+            <View style={styles.footer}>
+                <TouchableOpacity activeOpacity={0.7}>
+                    <Text style={styles.footerLink}>Terms of use</Text>
+                </TouchableOpacity>
+                <Text style={styles.footerSpacing}>     </Text>
+                <TouchableOpacity activeOpacity={0.7}>
+                    <Text style={styles.footerLink}>Privacy Policy</Text>
+                </TouchableOpacity>
+            </View>
+        </SafeAreaView>
+    );
+};
+
+export default Login;
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: COLORS.background,
+    },
+    content: {
+        flex: 1,
+        alignItems: 'center',
+        paddingHorizontal: ms(40),
+        // paddingTop: mvs(40),
+    },
+    logo: {
+        width: ms(180),
+        height: ms(130),
+        marginBottom: mvs(30),
+    },
+    title: {
+        fontFamily: FONTS.bold,
+        fontSize: normalize(16),
+        color: '#000000', // Black title text to match "Sign up to continue"
+        marginVertical: mvs(25),
+    },
+    secondaryButton: {
+        width: '100%',
+        height: mvs(56),
+        borderRadius: ms(15),
+        borderWidth: 1,
+        borderColor: COLORS.lightGray, // Assuming very faint border
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: mvs(40),
+    },
+    secondaryButtonText: {
+        fontFamily: FONTS.bold,
+        fontSize: normalize(16),
+        color: COLORS.primary,
+    },
+    dividerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        width: '100%',
+        marginBottom: mvs(20),
+        marginTop: mvs(10),
+    },
+    dividerLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: COLORS.lightGray,
+    },
+    dividerText: {
+        fontFamily: FONTS.regular,
+        fontSize: normalize(12),
+        color: '#000000', // Matches the design "or sign up with"
+        paddingHorizontal: ms(15),
+    },
+    socialContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        width: '70%',
+        marginBottom: mvs(40),
+    },
+    socialButton: {
+        width: ms(60),
+        height: ms(60),
+        borderRadius: ms(15),
+        borderWidth: 1,
+        borderColor: COLORS.lightGray,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    socialIcon: {
+        width: ms(24),
+        height: ms(24),
+    },
+    footer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingBottom: mvs(30),
+    },
+    footerLink: {
+        fontFamily: FONTS.bold,
+        fontSize: normalize(12),
+        color: COLORS.primary,
+    },
+    footerSpacing: {
+        width: ms(30),
+    },
+
+
+    inputWrapper: {
+        width: '100%',
+        height: mvs(56),
+        borderWidth: 1,
+        borderColor: '#E8E6EA',
+        borderRadius: ms(15),
+        paddingHorizontal: ms(20),
+        justifyContent: 'center',
+        marginTop: mvs(15),
+        marginBottom: mvs(20),
+    },
+    floatingLabel: {
+        position: 'absolute',
+        top: -mvs(10),
+        left: ms(20),
+        backgroundColor: COLORS.white,
+        paddingHorizontal: ms(5),
+        fontFamily: FONTS.regular,
+        fontSize: normalize(11),
+        color: 'rgba(0, 0, 0, 0.4)',
+    },
+    input: {
+        fontFamily: FONTS.regular,
+        fontSize: normalize(13),
+        color: COLORS.black,
+        padding: 0,
+    },
+});
