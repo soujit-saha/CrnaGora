@@ -116,7 +116,7 @@ export function* plansSaga(
   const header: ApiHeaders = {
     Accept: 'application/json',
     contenttype: 'application/json',
-    accesstoken: item.verifyOTPRes?.token,
+    accesstoken: item.getTokenResponse || item.verifyOTPRes?.token,
 
   };
   try {

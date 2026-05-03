@@ -19,6 +19,13 @@ export interface MainState {
     swipeRes?: any;
     matchesListRes?: any;
     matchesBlockRes?: any;
+    // Chat
+    isChatLoading: boolean;
+    chatListRes?: any;
+    chatMessagesRes?: any;
+    startChatRes?: any;
+    sendMessageRes?: any;
+    markAsReadRes?: any;
 }
 
 const initialState: MainState = {
@@ -39,6 +46,13 @@ const initialState: MainState = {
     swipeRes: {},
     matchesListRes: [],
     matchesBlockRes: [],
+    // Chat
+    isChatLoading: false,
+    chatListRes: [],
+    chatMessagesRes: [],
+    startChatRes: {},
+    sendMessageRes: {},
+    markAsReadRes: {},
 };
 
 const MainSlice = createSlice({
@@ -206,6 +220,95 @@ const MainSlice = createSlice({
             state.error = action.payload?.error || 'matchesBlock failed';
             state.status = action.type;
         },
+
+        // Chat List
+        chatListRequest(state, action: PayloadAction<any>) {
+            state.isChatLoading = true;
+            state.status = action.type;
+        },
+        chatListSuccess(state, action: PayloadAction<any>) {
+            state.isChatLoading = false;
+            state.chatListRes = action.payload;
+            state.status = action.type;
+        },
+        chatListFailure(state, action: PayloadAction<any>) {
+            state.isChatLoading = false;
+            state.error = action.payload?.error || 'chatList failed';
+            state.status = action.type;
+        },
+
+        // Chat Messages
+        chatMessagesRequest(state, action: PayloadAction<any>) {
+            state.isChatLoading = true;
+            state.status = action.type;
+        },
+        chatMessagesSuccess(state, action: PayloadAction<any>) {
+            state.isChatLoading = false;
+            state.chatMessagesRes = action.payload;
+            state.status = action.type;
+        },
+        chatMessagesFailure(state, action: PayloadAction<any>) {
+            state.isChatLoading = false;
+            state.error = action.payload?.error || 'chatMessages failed';
+            state.status = action.type;
+        },
+
+        // Start Chat
+        startChatRequest(state, action: PayloadAction<any>) {
+            state.isChatLoading = true;
+            state.status = action.type;
+        },
+        startChatSuccess(state, action: PayloadAction<any>) {
+            state.isChatLoading = false;
+            state.startChatRes = action.payload;
+            state.status = action.type;
+        },
+        startChatFailure(state, action: PayloadAction<any>) {
+            state.isChatLoading = false;
+            state.error = action.payload?.error || 'startChat failed';
+            state.status = action.type;
+        },
+
+        // Send Message
+        sendMessageRequest(state, action: PayloadAction<any>) {
+            state.status = action.type;
+        },
+        sendMessageSuccess(state, action: PayloadAction<any>) {
+            state.sendMessageRes = action.payload;
+            state.status = action.type;
+        },
+        sendMessageFailure(state, action: PayloadAction<any>) {
+            state.error = action.payload?.error || 'sendMessage failed';
+            state.status = action.type;
+        },
+
+        // Mark as Read
+        markAsReadRequest(state, action: PayloadAction<any>) {
+            state.isChatLoading = true;
+            state.status = action.type;
+        },
+        markAsReadSuccess(state, action: PayloadAction<any>) {
+            state.isChatLoading = false;
+            state.markAsReadRes = action.payload;
+            state.status = action.type;
+        },
+        markAsReadFailure(state, action: PayloadAction<any>) {
+            state.isChatLoading = false;
+            state.error = action.payload?.error || 'markAsRead failed';
+            state.status = action.type;
+        },
+
+        // Append a new real-time message
+        appendNewMessage(state, action: PayloadAction<any>) {
+            if (Array.isArray(state.chatMessagesRes)) {
+                state.chatMessagesRes = [action.payload, ...state.chatMessagesRes];
+            }
+        },
+
+        // Clear chat messages
+        clearChatMessages(state) {
+            state.chatMessagesRes = [];
+        },
     },
 });
 
@@ -252,6 +355,13 @@ export const {
     matchesBlockSuccess,
     matchesBlockFailure,
 
+    chatListRequest, chatListSuccess, chatListFailure,
+    chatMessagesRequest, chatMessagesSuccess, chatMessagesFailure,
+    startChatRequest, startChatSuccess, startChatFailure,
+    sendMessageRequest, sendMessageSuccess, sendMessageFailure,
+    markAsReadRequest, markAsReadSuccess, markAsReadFailure,
+    appendNewMessage,
+    clearChatMessages,
 
 } = MainSlice.actions;
 

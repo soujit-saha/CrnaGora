@@ -55,7 +55,7 @@ const initialState: AuthState = {
   saveTokenToLoginRes: {},
   masterdropdownRes: {},
   settingRes: {},
-  plansRes: {},
+  plansRes: [],
   notificationSetUpRes: {},
 };
 

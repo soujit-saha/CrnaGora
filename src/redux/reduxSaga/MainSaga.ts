@@ -15,8 +15,10 @@ import {
     getPeopleDetailsFailure,
     swipeSuccess,
     swipeFailure,
+    matchesListRequest,
     matchesListSuccess,
     matchesListFailure,
+    matchesBlockRequest,
     matchesBlockSuccess,
     matchesBlockFailure,
     getStatusesSuccess, getStatusesFailure,
@@ -25,7 +27,12 @@ import {
     reactStatusSuccess, reactStatusFailure,
     getStatusCommentsSuccess, getStatusCommentsFailure,
     addStatusCommentSuccess, addStatusCommentFailure,
-    getUserStatusesSuccess, getUserStatusesFailure
+    getUserStatusesSuccess, getUserStatusesFailure,
+    chatListSuccess, chatListFailure,
+    chatMessagesSuccess, chatMessagesFailure,
+    startChatSuccess, startChatFailure,
+    sendMessageSuccess, sendMessageFailure,
+    markAsReadSuccess, markAsReadFailure,
 } from '../reducer/MainReducer';
 // import { getApi, postApi } from '../../utils/helper/ApiRequest';
 import { ApiHeaders, ApiResponse } from '../types';
@@ -109,7 +116,7 @@ export function* confirmPaymentSaga(
     const header: ApiHeaders = {
         Accept: 'application/json',
         contenttype: 'application/json',
-        accesstoken: item.verifyOTPRes?.token,
+        accesstoken: item?.getTokenResponse || item.verifyOTPRes?.token,
     };
     try {
         const response: ApiResponse = yield call(
@@ -236,7 +243,7 @@ export function* matchesListSaga(
         );
 
         console.log("matches res", response)
-        yield put(matchesListSuccess(response?.data));
+        yield put(matchesListSuccess(response?.data?.data));
 
     } catch (error: any) {
         console.log(error);
@@ -257,13 +264,14 @@ export function* matchesBlockSaga(
     try {
         const response: ApiResponse = yield call(
             postApi,
-            'matches/block/' + action.payload.id,
-            action.payload.body,
+            'matches/block/' + action.payload,
+            {},
             header,
         );
 
         console.log("matches/block res", response)
         yield put(matchesBlockSuccess(response?.data));
+        yield put(matchesListRequest({}));
 
     } catch (error: any) {
         console.log(error);
@@ -363,7 +371,7 @@ export function* getStatusesSaga(action: PayloadAction<any>): Generator<any, voi
     const header: ApiHeaders = { Accept: 'application/json', contenttype: 'application/json', accesstoken: item.getTokenResponse };
     try {
         const response: ApiResponse = yield call(getApi, 'statuses', header);
-        yield put(getStatusesSuccess(response?.data));
+        yield put(getStatusesSuccess(response?.data?.data));
     } catch (error: any) {
         yield put(getStatusesFailure(error));
         ToastAlert(error?.response?.data?.message || 'getStatuses Failed');
@@ -372,10 +380,11 @@ export function* getStatusesSaga(action: PayloadAction<any>): Generator<any, voi
 
 export function* createStatusSaga(action: PayloadAction<any>): Generator<any, void, any> {
     const item = yield select(getItems);
-    const header: ApiHeaders = { Accept: 'application/json', contenttype: 'application/json', accesstoken: item.getTokenResponse };
+    const header: ApiHeaders = { Accept: 'application/json', contenttype: 'multipart/form-data', accesstoken: item.getTokenResponse };
     try {
         const response: ApiResponse = yield call(postApi, 'statuses', action.payload, header);
         yield put(createStatusSuccess(response?.data));
+        yield put({ type: 'Main/getStatusesRequest', payload: {} });
     } catch (error: any) {
         yield put(createStatusFailure(error));
         ToastAlert(error?.response?.data?.message || 'createStatus Failed');
@@ -442,6 +451,145 @@ export function* getUserStatusesSaga(action: PayloadAction<any>): Generator<any,
     }
 }
 
+// ===== CHAT SAGAS =====
+
+export function* chatListSaga(
+    action: PayloadAction<any>,
+): Generator<any, void, any> {
+    const item = yield select(getItems);
+    const header: ApiHeaders = {
+        Accept: 'application/json',
+        contenttype: 'application/json',
+        accesstoken: item.getTokenResponse,
+    };
+    try {
+        const response: ApiResponse = yield call(getApi, 'chats', header);
+        console.log('chatList res', response);
+        yield put(chatListSuccess(response?.data));
+    } catch (error: any) {
+        console.log(error);
+        yield put(chatListFailure(error));
+        ToastAlert(error?.response?.data?.message || 'Chat List Failed');
+    }
+}
+
+export function* chatMessagesSaga(
+    action: PayloadAction<any>,
+): Generator<any, void, any> {
+    const item = yield select(getItems);
+    const header: ApiHeaders = {
+        Accept: 'application/json',
+        contenttype: 'application/json',
+        accesstoken: item.getTokenResponse,
+    };
+    try {
+        const chatId = action.payload?.chatId || action.payload;
+        const response: ApiResponse = yield call(getApi, `chats/${chatId}/messages`, header);
+        console.log('chatMessages res', JSON.stringify(response?.data)?.substring(0, 500));
+        yield put(chatMessagesSuccess(response?.data));
+    } catch (error: any) {
+        console.log(error);
+        yield put(chatMessagesFailure(error));
+        ToastAlert(error?.response?.data?.message || 'Chat Messages Failed');
+    }
+}
+
+export function* startChatSaga(
+    action: PayloadAction<any>,
+): Generator<any, void, any> {
+    const item = yield select(getItems);
+    const header: ApiHeaders = {
+        Accept: 'application/json',
+        contenttype: 'application/json',
+        accesstoken: item.getTokenResponse,
+    };
+    try {
+        const response: ApiResponse = yield call(
+            postApi,
+            'chats',
+            { user_id: action.payload.user_id },
+            header,
+        );
+        console.log('startChat res', response);
+        yield put(startChatSuccess(response?.data?.data || response?.data));
+    } catch (error: any) {
+        console.log(error);
+        yield put(startChatFailure(error));
+        ToastAlert(error?.response?.data?.message || 'Start Chat Failed');
+    }
+}
+
+export function* sendMessageSaga(
+    action: PayloadAction<any>,
+): Generator<any, void, any> {
+    const item = yield select(getItems);
+    const header: ApiHeaders = {
+        Accept: 'application/json',
+        contenttype: 'multipart/form-data',
+        accesstoken: item.getTokenResponse,
+    };
+    try {
+        const { chatId, type, message, attachment } = action.payload;
+
+        const formData = new FormData();
+        formData.append('type', type || 'text');
+        if (message) {
+            formData.append('message', message);
+        }
+        if (attachment) {
+            formData.append('attachment', {
+                uri: attachment.uri,
+                name: attachment.name || 'file',
+                type: attachment.type || 'application/octet-stream',
+            } as any);
+        }
+
+        console.log('Sending message to:', `chats/${chatId}/messages`);
+        console.log('Payload type:', type);
+        console.log('Has attachment:', !!attachment);
+
+        const response: ApiResponse = yield call(
+            postApi,
+            `chats/${chatId}/messages`,
+            formData,
+            header,
+        );
+        console.log('sendMessage res:', JSON.stringify(response?.data)?.substring(0, 500));
+        yield put(sendMessageSuccess(response?.data?.data || response?.data));
+    } catch (error: any) {
+        console.log(error);
+        yield put(sendMessageFailure(error));
+        ToastAlert(error?.response?.data?.message || 'Send Message Failed');
+    }
+}
+
+export function* markAsReadSaga(
+    action: PayloadAction<any>,
+): Generator<any, void, any> {
+    const item = yield select(getItems);
+    const header: ApiHeaders = {
+        Accept: 'application/json',
+        contenttype: 'application/json',
+        accesstoken: item.getTokenResponse,
+    };
+    try {
+        const response: ApiResponse = yield call(
+            postApi,
+            `statuses/${action?.payload}/read`,
+            {},
+            header,
+        );
+        console.log('markAsRead res', response);
+        yield put(markAsReadSuccess(response?.data));
+    } catch (error: any) {
+        console.log(error);
+        yield put(markAsReadFailure(error));
+        // We might not want to toast for background tasks like marking as read
+        // but following the pattern for now.
+        // ToastAlert(error?.response?.data?.message || 'Mark as Read Failed');
+    }
+}
+
 // Watcher Saga
 export function* watchMainSaga(): Generator<any, void, any> {
     yield takeLatest('Main/peopleListRequest', peopleListSaga);
@@ -459,4 +607,10 @@ export function* watchMainSaga(): Generator<any, void, any> {
     yield takeLatest('Main/swipeRequest', swipeSaga);
     yield takeLatest('Main/matchesListRequest', matchesListSaga);
     yield takeLatest('Main/matchesBlockRequest', matchesBlockSaga);
+    // Chat
+    yield takeLatest('Main/chatListRequest', chatListSaga);
+    yield takeLatest('Main/chatMessagesRequest', chatMessagesSaga);
+    yield takeLatest('Main/startChatRequest', startChatSaga);
+    yield takeLatest('Main/sendMessageRequest', sendMessageSaga);
+    yield takeLatest('Main/markAsReadRequest', markAsReadSaga);
 }

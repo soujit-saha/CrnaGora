@@ -3,11 +3,17 @@
 interface AppConstants {
   readonly TOKEN: string;
   readonly BASE_URL: string;
+  readonly PUSHER_APP_KEY: string;
+  readonly PUSHER_APP_CLUSTER: string;
+  readonly PUSHER_APP_ID: string;
 }
 
 export const constants: AppConstants = {
   TOKEN: 'TOKEN',
   BASE_URL: 'https://tinder.swastechinfo.in/api',
+  PUSHER_APP_KEY: '6dc15316c4d3bd13decf',
+  PUSHER_APP_CLUSTER: 'ap2',
+  PUSHER_APP_ID: '2149239',
 } as const;
 
 // Colors extracted from Figma design

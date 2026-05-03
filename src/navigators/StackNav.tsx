@@ -32,6 +32,7 @@ import MyProfile from '../screens/main/MyProfile';
 import Chat from '../screens/main/Chat';
 import Stories from '../screens/main/Stories';
 import ChatPreview from '../screens/main/ChatPreview';
+import Subscription from '../screens/main/Subscription';
 
 type RootStackParamList = {
   SplashScreen: undefined;
@@ -55,9 +56,10 @@ type RootStackParamList = {
   PrivacyPolicy: undefined;
   MyPreferences: undefined;
   MyProfile: undefined;
-  Chat: undefined;
+  Chat: { chatId?: number; userId?: number; userName?: string; userImage?: string };
   Stories: undefined;
-  ChatPreview: undefined;
+  ChatPreview: { matchUser?: any };
+  Subscription: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -120,7 +122,8 @@ export default function StackNav() {
         MyProfile,
         Chat,
         Stories,
-        ChatPreview
+        ChatPreview,
+        Subscription
       };
 
   if (isLoading) {

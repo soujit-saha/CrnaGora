@@ -23,36 +23,34 @@ import connectionrequest from '../../utils/helper/NetInfo';
 import ToastAlert from '../../utils/helper/Toast';
 import { confirmPaymentRequest } from '../../redux/reducer/MainReducer';
 import Loader from '../../utils/helper/Loader';
+import moment from 'moment';
 
 
-const UpgradePlan = ({ navigation }: any) => {
+const Subscription = () => {
     const dispatch = useDispatch();
-    const { plansRes, getTokenResponse, verifyOTPRes, isReqLoading } = useSelector((state: any) => state.AuthReducer);
-    const { isMainLoading } = useSelector((state: any) => state.MainReducer);
+    const { plansRes, getTokenResponse, isReqLoading } = useSelector((state: any) => state.AuthReducer);
+    const { isMainLoading, getProfileRes } = useSelector((state: any) => state.MainReducer);
     // Start with "Crna Plus" selected
     const [selectedPlanId, setSelectedPlanId] = useState('');
     const [loading, setLoading] = useState(false);
 
     const selectedPlan = plansRes?.find((p: any) => p.id === selectedPlanId) || plansRes?.[0];
 
+    const subscriptionEndDate = getProfileRes?.data?.subscription?.end_date;
+    const isSubscriptionActive = subscriptionEndDate
+        ? moment().isSameOrBefore(moment(subscriptionEndDate, 'DD/MM/YYYY').endOf('day'))
+        : false;
+
     const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
     const openStripeSDK = async () => {
         setLoading(true)
         try {
-            // WARNING: Creating a PaymentIntent directly from the app is ONLY for testing.
-            // In production, your SECRET KEY should NEVER be in the app. This must be moved to your backend.
 
-
-            // Convert price to cents (Stripe requires smallest currency unit)
-            const price = parseFloat(selectedPlan?.monthly_price || selectedPlan?.price?.replace('$', '') || '10.00');
-
-            // https://api.stripe.com/v1/payment_intents
-            // Fetch PaymentIntent from Stripe API directly
             const response = await fetch('https://tinder.swastechinfo.in/api/create-payment-intent', {
                 method: 'POST',
                 headers: {
-                    Authorization: `Bearer ${verifyOTPRes?.token}`,
+                    Authorization: `Bearer ${getTokenResponse}`,
                     'Content-Type': 'application/json',
                     Accept: 'application/json',
                 },
@@ -88,8 +86,8 @@ const UpgradePlan = ({ navigation }: any) => {
                     name: 'CrnaGora',
                 }
             });
-            console.log('check 123')
             if (initError) {
+                setLoading(false)
                 Alert.alert('Error initializing payment', initError.message);
                 return;
             }
@@ -99,7 +97,9 @@ const UpgradePlan = ({ navigation }: any) => {
             if (presentError) {
                 if (presentError.code === 'Canceled') {
                     console.log('Payment sheet was canceled by the user');
+                    setLoading(false)
                 } else {
+                    setLoading(false)
                     Alert.alert('Payment Error', presentError.message);
                 }
             } else {
@@ -116,6 +116,7 @@ const UpgradePlan = ({ navigation }: any) => {
             }
         } catch (error) {
             console.log('Error', error)
+            setLoading(false)
             // console.error(error);
             // Alert.alert('Error', 'Something went wrong while opening Stripe SDK');
         }
@@ -134,11 +135,11 @@ const UpgradePlan = ({ navigation }: any) => {
 
     useEffect(() => {
         if (plansRes) {
-            setSelectedPlanId(plansRes?.[0].id);
+            setSelectedPlanId(plansRes?.[0]?.id);
         }
     }, [plansRes]);
 
-
+    console.log("isSubscriptionActive", isSubscriptionActive)
 
     return (
         <SafeAreaView style={styles.container}>
@@ -150,17 +151,24 @@ const UpgradePlan = ({ navigation }: any) => {
                 start={{ x: 0, y: 0.0 }}
                 end={{ x: 0, y: 0.2 }}
             />
-            {/* Custom Header */}
-            <View style={styles.header}>
-                <TouchableOpacity activeOpacity={0.7} style={styles.skipButton} onPress={() => { dispatch(saveTokenToLogin({})) }}>
-                    <Text style={styles.skipText}>Skip</Text>
-                </TouchableOpacity>
-            </View>
+
+
 
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
+
+                <View style={{ width: '100%', paddingVertical: 10, borderWidth: 1, borderColor: COLORS.primary, paddingHorizontal: 10, borderRadius: ms(5) }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Text style={{ fontSize: ms(20), fontFamily: FONTS.bold, color: COLORS.primary }}>Current Plan</Text>
+                        <Text style={{ fontSize: ms(16), fontFamily: FONTS.semiBold, color: COLORS.primary }}>{getProfileRes?.data?.subscription?.plan_name ? getProfileRes?.data?.subscription?.plan_name : "Free"}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Text style={{ fontSize: ms(20), fontFamily: FONTS.bold, color: '#000' }}>Expires On</Text>
+                        <Text style={{ fontSize: ms(16), fontFamily: FONTS.semiBold, color: '#000' }}>{getProfileRes?.data?.subscription?.end_date ? moment(getProfileRes?.data?.subscription?.end_date).format('DD MMM YYYY') : "--"}</Text>
+                    </View>
+                </View>
                 {/* Hero Headers */}
                 <Text style={styles.title}>Upgrade your{'\n'}experience</Text>
                 <Text style={styles.subtitle}>
@@ -226,9 +234,10 @@ const UpgradePlan = ({ navigation }: any) => {
 
                 <CustomButton
                     title={`Continue for $${selectedPlan?.monthly_price || selectedPlan?.price}`}
+                    // disabled={isSubscriptionActive}
                     onPress={() => {
-                        if (!selectedPlanId) {
-                            ToastAlert('Please select a plan')
+                        if (isSubscriptionActive) {
+                            ToastAlert('Your subscription is already active!')
                         } else {
                             openStripeSDK()
                         }
@@ -239,7 +248,7 @@ const UpgradePlan = ({ navigation }: any) => {
     );
 };
 
-export default UpgradePlan;
+export default Subscription;
 
 const styles = StyleSheet.create({
     container: {

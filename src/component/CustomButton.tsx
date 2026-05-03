@@ -11,6 +11,8 @@ interface CustomButtonProps {
   containerStyle?: StyleProp<ViewStyle>;
   buttonStyle?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
+  disabled?: boolean;
+  activeOpacity?: number;
 }
 
 const CustomButton: React.FC<CustomButtonProps> = ({
@@ -19,12 +21,15 @@ const CustomButton: React.FC<CustomButtonProps> = ({
   containerStyle,
   buttonStyle,
   textStyle,
+  disabled = false,
+  activeOpacity = 1
 }) => {
   return (
     <TouchableOpacity
-      style={[styles.buttonContainer, containerStyle]}
-      activeOpacity={0.8}
+      style={[styles.buttonContainer, disabled && styles.disabledButton, containerStyle]}
+      activeOpacity={activeOpacity}
       onPress={onPress}
+      disabled={disabled}
     >
       <Text style={[styles.buttonText, textStyle]}>{title}</Text>
     </TouchableOpacity>
@@ -60,5 +65,11 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.semiBold,
     fontSize: normalize(14),
     color: COLORS.white,
+  },
+  disabledButton: {
+    backgroundColor: COLORS.lightGray,
+    shadowOpacity: 0,
+    elevation: 0,
+    opacity: 0.5,
   },
 });

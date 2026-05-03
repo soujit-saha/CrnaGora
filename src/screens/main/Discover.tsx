@@ -10,10 +10,14 @@ import {
     Image,
     TouchableOpacity,
     TextInput,
+    Platform,
+    PermissionsAndroid,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Modal from 'react-native-modal';
+import Geolocation from '@react-native-community/geolocation';
+import axios from 'axios';
 
 import { COLORS, FONTS, ICONS } from '../../utils/constants';
 import { ms, mvs } from '../../utils/helper/metric';
@@ -99,6 +103,7 @@ const Discover = () => {
     const [Age, setAge] = useState<[number, number]>([20, 28]);
     const [Distance, setDistance] = useState<number>(40);
     const [location, setLocation] = useState('');
+    const [currentAddress, setCurrentAddress] = useState('');
     const position = useRef(new Animated.ValueXY()).current;
 
     const latestIndex = useRef(currentIndex);
@@ -108,6 +113,85 @@ const Discover = () => {
         latestIndex.current = currentIndex;
         latestList.current = peopleListRes;
     });
+
+    const requestLocationPermission = async () => {
+        if (Platform.OS === 'ios') {
+            getCurrentLocation();
+        } else {
+            try {
+                const granted = await PermissionsAndroid.request(
+                    PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+                    {
+                        title: 'Location Permission',
+                        message: 'This app needs access to your location to show nearby profiles.',
+                        buttonNeutral: 'Ask Me Later',
+                        buttonNegative: 'Cancel',
+                        buttonPositive: 'OK',
+                    },
+                );
+                if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+                    getCurrentLocation();
+                } else {
+                    console.log('Location permission denied');
+                    setCurrentAddress('Permission Denied');
+                }
+            } catch (err) {
+                console.warn(err);
+            }
+        }
+    };
+
+    const getCurrentLocation = (highAccuracy = true) => {
+        Geolocation.getCurrentPosition(
+            async (position) => {
+                const { latitude, longitude } = position.coords;
+                fetchAddress(latitude, longitude);
+            },
+            (error) => {
+                console.log('Location Error:', error.code, error.message);
+                if (highAccuracy && (error.code === 3 || error.code === 2)) {
+                    // Fallback to low accuracy if high accuracy fails or times out
+                    getCurrentLocation(false);
+                } else {
+                    let errorMsg = 'Location Error';
+                    if (error.code === 1) errorMsg = 'Permission Denied';
+                    else if (error.code === 2) errorMsg = 'Position Unavailable';
+                    else if (error.code === 3) errorMsg = 'Location Timeout';
+                    setCurrentAddress(errorMsg);
+                }
+            },
+            { 
+                enableHighAccuracy: highAccuracy, 
+                timeout: highAccuracy ? 15000 : 30000, 
+                maximumAge: 10000 
+            },
+        );
+    };
+
+    const fetchAddress = async (lat: number, lon: number) => {
+        try {
+            const response = await axios.get(
+                `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`,
+                {
+                    headers: {
+                        'User-Agent': 'CrnaGoraApp/1.0 (Mobile App)',
+                    },
+                    timeout: 10000,
+                }
+            );
+            if (response.data && response.data.address) {
+                const { city, state, country, suburb, town, village, county } = response.data.address;
+                const displayCity = city || town || village || suburb || county || 'Unknown';
+                const displayState = state || country || '';
+                setCurrentAddress(`${displayCity}, ${displayState}`);
+            } else {
+                setCurrentAddress('Address not found');
+            }
+        } catch (error: any) {
+            console.log('Geocoding Error details:', error?.response?.data || error?.message);
+            setCurrentAddress('Geocoding Error');
+        }
+    };
 
     function HandleSwipe(type: any, id: any) {
         dispatch(swipeRequest({
@@ -364,6 +448,7 @@ const Discover = () => {
             .then(() => {
                 dispatch(peopleListRequest({ page: 1, limit: 10 }))
                 dispatch(getProfileRequest({}))
+                requestLocationPermission();
             })
             .catch(err => {
                 ToastAlert('Please connect To Internet');
@@ -395,7 +480,7 @@ const Discover = () => {
 
                 <View style={styles.headerCenter}>
                     <Text style={styles.headerTitle}>Discover</Text>
-                    <Text style={styles.headerSubtitle}>Chicago, Il</Text>
+                    <Text style={styles.headerSubtitle}>{currentAddress || 'Locating...'}</Text>
                 </View>
 
                 <TouchableOpacity style={styles.headerBtn} onPress={() => setIsFilterVisible(true)}>

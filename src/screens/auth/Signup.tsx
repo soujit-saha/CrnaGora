@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     StyleSheet,
     Text,
@@ -7,7 +7,9 @@ import {
     Image,
     StatusBar,
     Platform,
+    ScrollView,
 } from 'react-native';
+import Modal from 'react-native-modal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, FONTS, ICONS } from '../../utils/constants';
 import { ms, mvs } from '../../utils/helper/metric';
@@ -15,9 +17,31 @@ import normalize from '../../utils/helper/normalize';
 import BackButtonHeader from '../../component/BackButtonHeader';
 import CustomButton from '../../component/CustomButton';
 import { navigate } from '../../utils/helper/RootNavigation';
+import connectionrequest from '../../utils/helper/NetInfo';
+import { settingRequest } from '../../redux/reducer/AuthReducer';
+import { useDispatch } from 'react-redux';
+import ToastAlert from '../../utils/helper/Toast';
+import { useSelector } from 'react-redux';
 
 const Signup = ({ route }: any) => {
     const type = route.params;
+
+    const dispatch = useDispatch()
+    const { isReqLoading, settingRes } = useSelector((state: any) => state.AuthReducer);
+
+    const [isModalVisible, setIsModalVisible] = useState(false);
+    const [modalTitle, setModalTitle] = useState('');
+    const [modalContent, setModalContent] = useState('');
+
+    useEffect(() => {
+        connectionrequest()
+            .then(() => {
+                dispatch(settingRequest({}))
+            })
+            .catch(err => {
+                ToastAlert('Please connect To Internet');
+            });
+    }, [])
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
@@ -84,14 +108,41 @@ const Signup = ({ route }: any) => {
 
             {/* Footer */}
             <View style={styles.footer}>
-                <TouchableOpacity activeOpacity={0.7}>
+                <TouchableOpacity activeOpacity={0.7} onPress={() => {
+                    setModalTitle('Terms of Use');
+                    setModalContent(settingRes?.term_and_condition || 'Loading...');
+                    setIsModalVisible(true);
+                }}>
                     <Text style={styles.footerLink}>Terms of use</Text>
                 </TouchableOpacity>
                 <Text style={styles.footerSpacing}>     </Text>
-                <TouchableOpacity activeOpacity={0.7}>
+                <TouchableOpacity activeOpacity={0.7} onPress={() => {
+                    setModalTitle('Privacy Policy');
+                    setModalContent(settingRes?.privacy_policy || 'Loading...');
+                    setIsModalVisible(true);
+                }}>
                     <Text style={styles.footerLink}>Privacy Policy</Text>
                 </TouchableOpacity>
             </View>
+
+            <Modal
+                isVisible={isModalVisible}
+                onBackdropPress={() => setIsModalVisible(false)}
+                onBackButtonPress={() => setIsModalVisible(false)}
+                style={styles.modal}
+            >
+                <View style={styles.modalContainer}>
+                    <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle}>{modalTitle}</Text>
+                        <TouchableOpacity onPress={() => setIsModalVisible(false)}>
+                            <Text style={styles.closeText}>✕</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+                        <Text style={styles.policyText}>{modalContent}</Text>
+                    </ScrollView>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 };
@@ -186,5 +237,43 @@ const styles = StyleSheet.create({
     },
     footerSpacing: {
         width: ms(30),
+    },
+    modal: {
+        margin: 0,
+        justifyContent: 'flex-end',
+    },
+    modalContainer: {
+        backgroundColor: COLORS.white,
+        borderTopLeftRadius: ms(25),
+        borderTopRightRadius: ms(25),
+        height: '80%',
+        paddingBottom: mvs(20),
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: ms(20),
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F0F0',
+    },
+    modalTitle: {
+        fontFamily: FONTS.bold,
+        fontSize: normalize(18),
+        color: COLORS.black,
+    },
+    closeText: {
+        fontSize: normalize(20),
+        color: COLORS.primary,
+        fontFamily: FONTS.bold,
+    },
+    modalContent: {
+        padding: ms(20),
+    },
+    policyText: {
+        fontFamily: FONTS.regular,
+        fontSize: normalize(14),
+        color: COLORS.textSecondary,
+        lineHeight: mvs(22),
     },
 });

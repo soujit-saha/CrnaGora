@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useDispatch } from 'react-redux';
 import {
   StyleSheet,
   Text,
@@ -9,85 +10,189 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, FONTS, ICONS } from '../../utils/constants';
 import { ms, mvs } from '../../utils/helper/metric';
 import normalize from '../../utils/helper/normalize';
 import { goBack } from '../../utils/helper/RootNavigation';
+import { markAsReadRequest } from '../../redux/reducer/MainReducer';
 
-const Stories = () => {
+const Stories = ({ route }: any) => {
+  const dispatch = useDispatch();
   const [message, setMessage] = useState('');
+  const data = route?.params;
+  const statuses = data?.statuses || [];
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const progress = useRef(new Animated.Value(0)).current;
+
+  // Mark status as read whenever the current status changes
+  useEffect(() => {
+    const currentStatus = statuses[currentIndex];
+    if (currentStatus?.id) {
+      console.log('Marking status as read:', currentStatus.id);
+      dispatch(markAsReadRequest(currentStatus.id));
+    }
+  }, [currentIndex, statuses]);
+
+  useEffect(() => {
+    if (statuses.length > 0) {
+      startAnimation();
+    } else {
+      // If no statuses, go back
+      const timer = setTimeout(() => goBack(), 100);
+      return () => clearTimeout(timer);
+    }
+    return () => progress.stopAnimation();
+  }, [currentIndex]);
+
+  const startAnimation = () => {
+    progress.setValue(0);
+    Animated.timing(progress, {
+      toValue: 1,
+      duration: 30000, // 30 seconds as requested
+      useNativeDriver: false,
+    }).start(({ finished }) => {
+      if (finished) {
+        handleNext();
+      }
+    });
+  };
+
+  const handlePrevious = () => {
+    progress.stopAnimation();
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+    }
+  };
+
+  const handleNext = () => {
+    progress.stopAnimation();
+    if (currentIndex < statuses.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    } else {
+      goBack();
+    }
+  };
+
+  const currentStatus = statuses[currentIndex];
 
   return (
-    <ImageBackground
-      source={{ uri: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80' }} // Full-size story image
-      style={styles.backgroundImage}
-      resizeMode="cover"
-    >
-      <SafeAreaView style={styles.container}>
-        {/* Story Progress Bars */}
-        <View style={styles.progressContainer}>
-          <View style={[styles.progressBar, styles.progressBarActive]} />
-          <View style={styles.progressBar} />
-        </View>
+    <View style={{ flex: 1 }}>
+      {/* Background Layer */}
+      {currentStatus?.type === 'image' ? (
+        <Image
+          source={{ uri: currentStatus.content }}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+        />
+      ) : (
+        <View 
+          style={[
+            StyleSheet.absoluteFill, 
+            { backgroundColor: currentStatus?.background_color || COLORS.primary }
+          ]} 
+        />
+      )}
 
-        {/* Top Header Row */}
-        <View style={styles.headerRow}>
-          <View style={styles.headerLeft}>
-            <Image
-              source={{ uri: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80' }}
-              style={styles.avatarImage}
-            />
-            <Text style={styles.headerName}>Grace</Text>
+      {/* Tap Regions Layer */}
+      <View style={[StyleSheet.absoluteFill, { flexDirection: 'row' }]}>
+        <TouchableOpacity 
+          activeOpacity={1} 
+          style={{ flex: 1 }} 
+          onPress={handlePrevious} 
+        />
+        <TouchableOpacity 
+          activeOpacity={1} 
+          style={{ flex: 1 }} 
+          onPress={handleNext} 
+        />
+      </View>
+
+      {/* UI Overlay Layer */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+        <SafeAreaView style={styles.container} pointerEvents="box-none">
+          {/* Story Progress Bars */}
+          <View style={styles.progressContainer} pointerEvents="none">
+            {statuses.map((item: any, index: number) => {
+              return (
+                <View key={index} style={styles.progressBarBackground}>
+                  <Animated.View
+                    style={[
+                      styles.progressBarFill,
+                      {
+                        width: index < currentIndex 
+                          ? '100%' 
+                          : index === currentIndex 
+                            ? progress.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: ['0%', '100%'],
+                              })
+                            : '0%'
+                      }
+                    ]}
+                  />
+                </View>
+              );
+            })}
           </View>
 
-          <TouchableOpacity style={styles.closeBtn} onPress={() => goBack()}>
-            <Image source={ICONS.closeSmall} style={styles.closeIcon} resizeMode="contain" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Spacer to push input to bottom */}
-        <View style={{ flex: 1 }} />
-
-        {/* Bottom Input Section */}
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <View style={styles.bottomRow}>
-            {/* Transparent Text Input container */}
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Your message"
-                placeholderTextColor="rgba(255,255,255,0.7)"
-                value={message}
-                onChangeText={setMessage}
+          {/* Top Header Row */}
+          <View style={styles.headerRow} pointerEvents="box-none">
+            <View style={styles.headerLeft} pointerEvents="none">
+              <Image
+                source={{ uri: data?.image_path }}
+                style={styles.avatarImage}
               />
-              <TouchableOpacity style={styles.stickerBtn}>
-                <Image source={ICONS.stickers} style={styles.stickerIcon} resizeMode="contain" />
-              </TouchableOpacity>
+              <Text style={styles.headerName}>{data?.name}</Text>
             </View>
 
-            {/* Translucent Send Button */}
-            <TouchableOpacity style={styles.sendBtn}>
-              <Image source={ICONS.send} style={styles.sendIcon} resizeMode="contain" />
+            <TouchableOpacity style={styles.closeBtn} onPress={() => goBack()}>
+              <Image source={ICONS.closeSmall} style={styles.closeIcon} resizeMode="contain" />
             </TouchableOpacity>
           </View>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </ImageBackground>
+
+          {/* Centered Text Content (within available space) */}
+          <View style={styles.middleContent} pointerEvents="none">
+            {currentStatus?.type === 'text' && (
+              <Text style={styles.storyText}>{currentStatus.content}</Text>
+            )}
+          </View>
+
+          {/* Bottom Input Section */}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            pointerEvents="box-none"
+          >
+            <View style={styles.bottomRow} pointerEvents="box-none">
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Your message"
+                  placeholderTextColor="rgba(255,255,255,0.7)"
+                  value={message}
+                  onChangeText={setMessage}
+                />
+                <TouchableOpacity style={styles.stickerBtn}>
+                  <Image source={ICONS.stickers} style={styles.stickerIcon} resizeMode="contain" />
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity style={styles.sendBtn}>
+                <Image source={ICONS.send} style={styles.sendIcon} resizeMode="contain" />
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </View>
+    </View>
   );
 };
 
 export default Stories;
 
 const styles = StyleSheet.create({
-  backgroundImage: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-  },
   container: {
     flex: 1,
     paddingHorizontal: ms(20),
@@ -99,15 +204,29 @@ const styles = StyleSheet.create({
     marginTop: mvs(15),
     marginBottom: mvs(20),
   },
-  progressBar: {
+  progressBarBackground: {
     flex: 1,
     height: mvs(3),
     backgroundColor: 'rgba(255,255,255,0.4)',
     borderRadius: ms(2),
-    marginHorizontal: ms(2), // tiny gap between bars
+    marginHorizontal: ms(2),
+    overflow: 'hidden',
   },
-  progressBarActive: {
-    backgroundColor: '#FF99D6', // the bright pink specific to stories mock
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#FF99D6',
+  },
+  middleContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: ms(10),
+  },
+  storyText: {
+    fontFamily: FONTS.bold,
+    fontSize: normalize(24),
+    color: COLORS.white,
+    textAlign: 'center',
   },
   headerRow: {
     flexDirection: 'row',

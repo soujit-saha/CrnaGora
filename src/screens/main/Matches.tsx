@@ -89,10 +89,12 @@ const Matches = () => {
     const onRemovePress = (item: any) => {
         setSelectedMatch(item);
         setIsRemoveModalVisible(true);
-        dispatch(matchesBlockRequest({ id: item.id, body: {} }))
     };
 
     const confirmRemove = () => {
+        if (selectedMatch) {
+            dispatch(matchesBlockRequest(selectedMatch.id));
+        }
         // UI Interaction wrap-up
         setIsRemoveModalVisible(false);
         setSelectedMatch(null);
@@ -122,11 +124,11 @@ const Matches = () => {
                 <View style={styles.headerContainer}>
                     <View style={styles.titleRow}>
                         <Text style={styles.headerTitle}>Matches</Text>
-                        <TouchableOpacity style={styles.sortBtn}
+                        {/* <TouchableOpacity style={styles.sortBtn}
                         // onPress={() => setIsRemoveModalVisible(true)}
                         >
                             <Image source={ICONS.sort} style={styles.sortIcon} resizeMode="contain" />
-                        </TouchableOpacity>
+                        </TouchableOpacity> */}
                     </View>
                     <Text style={styles.headerSubtitle}>
                         This is a list of people who have liked you and your matches.
@@ -145,7 +147,7 @@ const Matches = () => {
 
                 {/* Grid */}
                 <View style={styles.gridRow}>
-                    {matchesListRes?.data?.map((item: any, index: any) => (
+                    {matchesListRes?.map((item: any, index: any) => (
                         <View key={item.id} style={styles.cardWrapper}>
                             <ImageBackground
                                 source={{ uri: item?.profile_image }}
@@ -172,7 +174,7 @@ const Matches = () => {
 
                                         <View style={styles.verticalDivider} />
 
-                                        <TouchableOpacity style={styles.actionButton} onPress={() => navigate('ChatPreview')}>
+                                        <TouchableOpacity style={styles.actionButton} onPress={() => navigate('ChatPreview', { matchUser: item })}>
                                             <Image
                                                 source={ICONS.message}
                                                 style={styles.actionIcon}
@@ -191,6 +193,11 @@ const Matches = () => {
                             )}
                         </View>
                     ))}
+                    {matchesListRes.length == 0 && (
+                        <Text style={{ ...styles.headerSubtitle, marginTop: mvs(100), textAlign: 'center', paddingHorizontal: ms(20) }}>
+                            No matches yet. Start liking people to see them here!
+                        </Text>
+                    )}
                 </View>
                 {/* </View> */}
                 {/* ))} */}
@@ -289,7 +296,8 @@ const styles = StyleSheet.create({
         fontFamily: FONTS.regular,
         fontSize: normalize(12),
         color: COLORS.textTertiary,
-        paddingRight: ms(40),
+
+        // paddingRight: ms(40),
     },
     sectionContainer: {
         marginTop: mvs(15),

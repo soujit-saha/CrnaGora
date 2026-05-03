@@ -23,11 +23,12 @@ import Loader from '../../utils/helper/Loader';
 
 const MENU_ITEMS = [
   { id: '1', title: 'My Preferences', icon: ICONS.myPreferences, type: 'link', screen: 'MyPreferences' },
-  { id: '2', title: 'Terms of use', icon: ICONS.termsOfUse, type: 'link', screen: 'TermsofUse' },
-  { id: '3', title: 'Privacy Policy', icon: ICONS.privacyPolicy, type: 'link', screen: 'PrivacyPolicy' },
-  { id: '4', title: 'Rate this app', icon: ICONS.rateThisApp, type: 'link' },
-  { id: '5', title: 'Contact Us', icon: ICONS.contactUs, type: 'link' },
-  { id: '6', title: 'Notifications', icon: ICONS.notifications, type: 'toggle' },
+  { id: '2', title: 'Subscription', icon: ICONS.myPreferences, type: 'link', screen: 'Subscription' },
+  { id: '3', title: 'Terms of use', icon: ICONS.termsOfUse, type: 'link', screen: 'TermsofUse' },
+  { id: '4', title: 'Privacy Policy', icon: ICONS.privacyPolicy, type: 'link', screen: 'PrivacyPolicy' },
+  { id: '5', title: 'Rate this app', icon: ICONS.rateThisApp, type: 'link' },
+  { id: '6', title: 'Contact Us', icon: ICONS.contactUs, type: 'link' },
+  { id: '7', title: 'Notifications', icon: ICONS.notifications, type: 'toggle' },
 ];
 
 const Profile = () => {
@@ -119,7 +120,8 @@ const Profile = () => {
             />
             <View style={styles.identityDetails}>
               <Text style={styles.identityName}>{getProfileRes?.data?.name}, {getProfileRes?.data?.age}</Text>
-              <Text style={styles.identityPlan}>FREE PLAN</Text>
+              <Text style={styles.identityPlan}>{getProfileRes?.data?.
+                subscription?.plan_name}</Text>
             </View>
             <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => navigate('MyProfile')}>
               <Image source={ICONS.vectorPinkNext} style={styles.nextArrow} resizeMode="contain" />

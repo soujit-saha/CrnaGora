@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -6,13 +6,19 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { COLORS, FONTS, ICONS } from '../../utils/constants';
 import { ms, mvs } from '../../utils/helper/metric';
 import normalize from '../../utils/helper/normalize';
-import { goBack } from '../../utils/helper/RootNavigation';
+import { goBack, navigate } from '../../utils/helper/RootNavigation';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  startChatRequest,
+  sendMessageRequest,
+} from '../../redux/reducer/MainReducer';
 
 const OPENERS = [
   { id: '1', text: 'Hello!' },
@@ -30,8 +36,70 @@ const OPENERS = [
   { id: '13', text: 'Match made right? 💘' },
 ];
 
-const ChatPreview = () => {
+const ChatPreview = ({ route }: any) => {
+  const matchUser = route?.params?.matchUser;
   const [selectedOpener, setSelectedOpener] = useState<string | null>(null);
+  const [isStarting, setIsStarting] = useState(false);
+
+  const dispatch = useDispatch();
+  const { startChatRes, status } = useSelector((state: any) => state.MainReducer);
+
+  // Listen for startChat success to navigate
+  useEffect(() => {
+    if (status === 'Main/startChatSuccess' && startChatRes?.id && isStarting) {
+      const chatId = startChatRes.id;
+      setIsStarting(false);
+
+      // If we had a selected opener, send it as the first message
+      const openerText = OPENERS.find(o => o.id === selectedOpener)?.text;
+      if (openerText) {
+        dispatch(sendMessageRequest({
+          chatId,
+          type: 'text',
+          message: openerText,
+        }));
+      }
+
+      // Navigate to Chat screen
+      navigate('Chat', {
+        chatId,
+        userId: matchUser?.id,
+        userName: matchUser?.name,
+        userImage: matchUser?.profile_image,
+      });
+    }
+  }, [status, startChatRes]);
+
+  const handleContinue = () => {
+    if (!matchUser?.id || !selectedOpener) return;
+    setIsStarting(true);
+    dispatch(startChatRequest({ user_id: matchUser.id }));
+  };
+
+  const handleCustomMessage = () => {
+    if (!matchUser?.id) return;
+    setIsStarting(true);
+    dispatch(startChatRequest({ user_id: matchUser.id }));
+  };
+
+  // Handle custom message flow — navigate to Chat without sending opener
+  useEffect(() => {
+    if (status === 'Main/startChatSuccess' && startChatRes?.id && isStarting && !selectedOpener) {
+      const chatId = startChatRes.id;
+      setIsStarting(false);
+      navigate('Chat', {
+        chatId,
+        userId: matchUser?.id,
+        userName: matchUser?.name,
+        userImage: matchUser?.profile_image,
+      });
+    }
+  }, [status, startChatRes, selectedOpener, isStarting]);
+
+  const userName = matchUser?.name || 'User';
+  const userAge = matchUser?.age || '';
+  const userImage = matchUser?.profile_image || 'https://via.placeholder.com/100';
+  const userProfession = matchUser?.profession || '';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -43,15 +111,17 @@ const ChatPreview = () => {
 
         <View style={styles.headerProfile}>
           <Image
-            source={{ uri: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80' }}
+            source={{ uri: userImage }}
             style={styles.avatarImage}
           />
           <View style={styles.headerTextCol}>
-            <Text style={styles.headerName}>Leilani, 19</Text>
-            <Text style={styles.headerSubtitle}>Proffesional model</Text>
+            <Text style={styles.headerName}>{userName}{userAge ? `, ${userAge}` : ''}</Text>
+            {userProfession ? (
+              <Text style={styles.headerSubtitle}>{userProfession}</Text>
+            ) : null}
           </View>
         </View>
-        <View style={{ flex: 1 }} /> {/* To balance flexing if needed, but flex row handles it */}
+        <View style={{ flex: 1 }} />
       </View>
 
       <ScrollView
@@ -84,12 +154,28 @@ const ChatPreview = () => {
 
       {/* Bottom Footer Actions */}
       <View style={styles.footerRow}>
-        <TouchableOpacity style={[styles.footerBtn, styles.btnContinue]}>
-          <Text style={styles.btnContinueText}>Continue</Text>
+        <TouchableOpacity
+          style={[styles.footerBtn, styles.btnContinue, !selectedOpener && { opacity: 0.5 }]}
+          onPress={handleContinue}
+          disabled={!selectedOpener || isStarting}
+        >
+          {isStarting && selectedOpener ? (
+            <ActivityIndicator color={COLORS.white} />
+          ) : (
+            <Text style={styles.btnContinueText}>Continue</Text>
+          )}
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.footerBtn, styles.btnCustom]}>
-          <Text style={styles.btnCustomText}>Custom Message</Text>
+        <TouchableOpacity
+          style={[styles.footerBtn, styles.btnCustom]}
+          onPress={handleCustomMessage}
+          disabled={isStarting}
+        >
+          {isStarting && !selectedOpener ? (
+            <ActivityIndicator color="#FF1493" />
+          ) : (
+            <Text style={styles.btnCustomText}>Custom Message</Text>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -156,7 +242,7 @@ const styles = StyleSheet.create({
     paddingBottom: mvs(100),
   },
   cardContainer: {
-    backgroundColor: '#FFFAFD', // Very soft pink backdrop from mockup
+    backgroundColor: '#FFFAFD',
     borderRadius: ms(25),
     paddingVertical: mvs(30),
     paddingHorizontal: ms(10),
@@ -167,7 +253,7 @@ const styles = StyleSheet.create({
   titleText: {
     fontFamily: FONTS.bold,
     fontSize: normalize(18),
-    color: '#FF1493', // Deep Pink
+    color: '#FF1493',
     marginBottom: mvs(6),
   },
   subtitleText: {
@@ -185,12 +271,11 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     paddingHorizontal: ms(16),
     paddingVertical: mvs(10),
-    borderRadius: ms(8), // Semi curved
+    borderRadius: ms(8),
     borderWidth: 1,
     borderColor: '#F0F0F0',
     marginHorizontal: ms(5),
     marginBottom: mvs(15),
-    // Soft shadow
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -238,7 +323,7 @@ const styles = StyleSheet.create({
   btnCustom: {
     backgroundColor: COLORS.white,
     borderWidth: 1,
-    borderColor: '#F0F0F0', // Or a very faint border
+    borderColor: '#F0F0F0',
     marginLeft: ms(10),
     elevation: 3,
     shadowColor: '#000',
@@ -249,6 +334,6 @@ const styles = StyleSheet.create({
   btnCustomText: {
     fontFamily: FONTS.bold,
     fontSize: normalize(14),
-    color: '#FF1493', // Deep Pink
+    color: '#FF1493',
   },
 });
