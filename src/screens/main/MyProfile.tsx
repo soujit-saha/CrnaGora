@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, FONTS, ICONS } from '../../utils/constants';
 import { ms, mvs } from '../../utils/helper/metric';
 import normalize from '../../utils/helper/normalize';
-import { goBack } from '../../utils/helper/RootNavigation';
+import { goBack, navigate } from '../../utils/helper/RootNavigation';
 import { useSelector } from 'react-redux';
 import moment from 'moment';
 
@@ -39,7 +39,7 @@ const MyProfile = () => {
           <Image source={ICONS.back} style={styles.headerIcon} resizeMode="contain" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Profile</Text>
-        <TouchableOpacity style={styles.headerBtn}>
+        <TouchableOpacity style={styles.headerBtn} onPress={() => navigate('UpdateProfile')}>
           <Image source={ICONS.profileEdit} style={styles.headerIcon} resizeMode="contain" />
         </TouchableOpacity>
       </View>

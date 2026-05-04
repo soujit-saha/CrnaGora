@@ -28,6 +28,8 @@ import {
     getStatusCommentsSuccess, getStatusCommentsFailure,
     addStatusCommentSuccess, addStatusCommentFailure,
     getUserStatusesSuccess, getUserStatusesFailure,
+    getMyStatusesSuccess, getMyStatusesFailure,
+    updateLocationSuccess, updateLocationFailure,
     chatListSuccess, chatListFailure,
     chatMessagesSuccess, chatMessagesFailure,
     startChatSuccess, startChatFailure,
@@ -45,6 +47,7 @@ import { getTokenSuccess } from '../reducer/AuthReducer';
 
 
 const getItems = (state: any) => state.AuthReducer;
+const getMainItems = (state: any) => state.MainReducer;
 
 
 //people list saga
@@ -280,88 +283,6 @@ export function* matchesBlockSaga(
     }
 }
 
-// export function* profileSetUpSaga(
-//   action: PayloadAction<any>,
-// ): Generator<any, void, any> {
-//   const item = yield select(getItems);
-//   console.log('153', item.verifyOTPRes?.token);
-//   const header: ApiHeaders = {
-//     Accept: 'application/json',
-//     contenttype: 'multipart/form-data',
-//     accesstoken: item.verifyOTPRes?.token,
-//   };
-//   try {
-//     const data = action.payload;
-
-//     // Build FormData here so the Redux action payload stays serializable
-//     const formData = new FormData();
-
-//     const scalarFields = [
-//       'name',
-//       'dob',
-//       'gender',
-//       'dating_preferences',
-//       'profession',
-//       'location',
-
-//     ];
-//     scalarFields.forEach(key => {
-//       if (data[key] !== undefined && data[key] !== null) {
-//         formData.append(key, String(data[key]));
-//       }
-//     });
-
-//     // Hobbies – flat array of item IDs
-//     (data.hobbies ?? []).forEach((id: any, index: number) => {
-//       formData.append(`hobbies[${index}]`, String(id));
-//     });
-
-//     // Profile image
-//     if (data.profile_image?.uri) {
-//       formData.append('profile_image', {
-//         uri: data.profile_image.uri,
-//         name: data.profile_image.name ?? 'profile_image.jpg',
-//         type: data.profile_image.type ?? 'image/jpeg',
-//       } as any);
-//     }
-
-//     // Gallery images
-//     // (data.gallary ?? data.gallery ?? []).forEach(
-//     //   (asset: any, index: number) => {
-//     //     if (asset?.uri) {
-//     //       formData.append(`gallery_images[${index}]`, {
-//     //         uri: asset.uri,
-//     //         name: asset.name ?? `photo_${index}.jpg`,
-//     //         type: asset.type ?? 'image/jpeg',
-//     //       } as any);
-//     //     }
-//     //   },
-//     // );
-
-//     const response: ApiResponse = yield call(
-//       postApi,
-//       'setup-profile',
-//       formData,
-//       header,
-//     );
-//     console.log('39', response);
-//     if (response?.status == 201 || response?.status == 200) {
-//       yield put(profileSetUpSuccess(response?.data?.access_token));
-//       navigate('Sucessful')
-//     } else {
-//       yield put(profileSetUpFailure(response?.data));
-//     }
-//   } catch (error: any) {
-//     console.log(error);
-//     yield put(profileSetUpFailure(error));
-//     ToastAlert(error?.response?.data?.message || 'Profile Setup Failed');
-//   }
-// }
-
-
-
-
-
 
 
 
@@ -380,12 +301,21 @@ export function* getStatusesSaga(action: PayloadAction<any>): Generator<any, voi
 
 export function* createStatusSaga(action: PayloadAction<any>): Generator<any, void, any> {
     const item = yield select(getItems);
+    const mainItem = yield select(getMainItems);
     const header: ApiHeaders = { Accept: 'application/json', contenttype: 'multipart/form-data', accesstoken: item.getTokenResponse };
     try {
         const response: ApiResponse = yield call(postApi, 'statuses', action.payload, header);
+        console.log("createStatusSaga", response)
         yield put(createStatusSuccess(response?.data));
+        ToastAlert("Status added successfully");
+
+        // Refresh statuses
         yield put({ type: 'Main/getStatusesRequest', payload: {} });
+        if (mainItem?.getProfileRes?.data?.id) {
+            yield put({ type: 'Main/getMyStatusesRequest', payload: mainItem.getProfileRes.data.id });
+        }
     } catch (error: any) {
+        console.log("createStatusSaga Error", error)
         yield put(createStatusFailure(error));
         ToastAlert(error?.response?.data?.message || 'createStatus Failed');
     }
@@ -393,10 +323,18 @@ export function* createStatusSaga(action: PayloadAction<any>): Generator<any, vo
 
 export function* deleteStatusSaga(action: PayloadAction<any>): Generator<any, void, any> {
     const item = yield select(getItems);
+    const mainItem = yield select(getMainItems);
     const header: ApiHeaders = { Accept: 'application/json', contenttype: 'application/json', accesstoken: item.getTokenResponse };
     try {
-        const response: ApiResponse = yield call(deleteApi, 'statuses/' + action.payload.id, header);
+        const id = action.payload?.id || action.payload;
+        const response: ApiResponse = yield call(deleteApi, 'statuses/' + id, header);
         yield put(deleteStatusSuccess(response?.data));
+
+        // Refresh statuses
+        yield put({ type: 'Main/getStatusesRequest', payload: {} });
+        if (mainItem?.getProfileRes?.data?.id) {
+            yield put({ type: 'Main/getMyStatusesRequest', payload: mainItem.getProfileRes.data.id });
+        }
     } catch (error: any) {
         yield put(deleteStatusFailure(error));
         ToastAlert(error?.response?.data?.message || 'deleteStatus Failed');
@@ -448,6 +386,30 @@ export function* getUserStatusesSaga(action: PayloadAction<any>): Generator<any,
     } catch (error: any) {
         yield put(getUserStatusesFailure(error));
         ToastAlert(error?.response?.data?.message || 'getUserStatuses Failed');
+    }
+}
+
+export function* getMyStatusesSaga(action: PayloadAction<any>): Generator<any, void, any> {
+    const item = yield select(getItems);
+    const header: ApiHeaders = { Accept: 'application/json', contenttype: 'application/json', accesstoken: item.getTokenResponse };
+    try {
+        const response: ApiResponse = yield call(getApi, 'statuses/user/' + action.payload, header);
+        yield put(getMyStatusesSuccess(response?.data));
+    } catch (error: any) {
+        yield put(getMyStatusesFailure(error));
+        ToastAlert(error?.response?.data?.message || 'getMyStatuses Failed');
+    }
+}
+
+export function* updateLocationSaga(action: PayloadAction<any>): Generator<any, void, any> {
+    const item = yield select(getItems);
+    const header: ApiHeaders = { Accept: 'application/json', contenttype: 'application/json', accesstoken: item.getTokenResponse };
+    try {
+        const response: ApiResponse = yield call(postApi, 'update-location', action.payload, header);
+        yield put(updateLocationSuccess(response?.data));
+    } catch (error: any) {
+        yield put(updateLocationFailure(error));
+        ToastAlert(error?.response?.data?.message || 'updateLocation Failed');
     }
 }
 
@@ -507,7 +469,7 @@ export function* startChatSaga(
         const response: ApiResponse = yield call(
             postApi,
             'chats',
-            { user_id: action.payload.user_id },
+            action.payload,
             header,
         );
         console.log('startChat res', response);
@@ -604,6 +566,8 @@ export function* watchMainSaga(): Generator<any, void, any> {
     yield takeLatest('Main/getStatusCommentsRequest', getStatusCommentsSaga);
     yield takeLatest('Main/addStatusCommentRequest', addStatusCommentSaga);
     yield takeLatest('Main/getUserStatusesRequest', getUserStatusesSaga);
+    yield takeLatest('Main/getMyStatusesRequest', getMyStatusesSaga);
+    yield takeLatest('Main/updateLocationRequest', updateLocationSaga);
     yield takeLatest('Main/swipeRequest', swipeSaga);
     yield takeLatest('Main/matchesListRequest', matchesListSaga);
     yield takeLatest('Main/matchesBlockRequest', matchesBlockSaga);

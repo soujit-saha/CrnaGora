@@ -42,7 +42,7 @@ const ChatPreview = ({ route }: any) => {
   const [isStarting, setIsStarting] = useState(false);
 
   const dispatch = useDispatch();
-  const { startChatRes, status } = useSelector((state: any) => state.MainReducer);
+  const { startChatRes, status, getProfileRes } = useSelector((state: any) => state.MainReducer);
 
   // Listen for startChat success to navigate
   useEffect(() => {
@@ -73,13 +73,13 @@ const ChatPreview = ({ route }: any) => {
   const handleContinue = () => {
     if (!matchUser?.id || !selectedOpener) return;
     setIsStarting(true);
-    dispatch(startChatRequest({ user_id: matchUser.id }));
+    dispatch(startChatRequest({ user_ids: [matchUser.id] }));
   };
 
   const handleCustomMessage = () => {
     if (!matchUser?.id) return;
     setIsStarting(true);
-    dispatch(startChatRequest({ user_id: matchUser.id }));
+    dispatch(startChatRequest({ user_ids: [matchUser.id] }));
   };
 
   // Handle custom message flow — navigate to Chat without sending opener

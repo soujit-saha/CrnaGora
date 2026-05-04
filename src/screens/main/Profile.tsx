@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Switch,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -20,6 +21,7 @@ import { logoutRequest, notificationSetUpRequest, settingRequest } from '../../r
 import connectionrequest from '../../utils/helper/NetInfo';
 import ToastAlert from '../../utils/helper/Toast';
 import Loader from '../../utils/helper/Loader';
+import { getProfileRequest } from '../../redux/reducer/MainReducer';
 
 const MENU_ITEMS = [
   { id: '1', title: 'My Preferences', icon: ICONS.myPreferences, type: 'link', screen: 'MyPreferences' },
@@ -36,7 +38,16 @@ const Profile = () => {
   const { isMainLoading, peopleListRes, getProfileRes } = useSelector((state: any) => state.MainReducer);
   const { isReqLoading } = useSelector((state: any) => state.AuthReducer);
   const [notificationsEnabled, setNotificationsEnabled] = useState(getProfileRes?.data?.enable_notification == 1 ? true : false);
+  const [refreshing, setRefreshing] = useState(false);
 
+  const onRefresh = () => {
+    setRefreshing(true);
+    dispatch(settingRequest({}));
+    dispatch(getProfileRequest({}));
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 1500);
+  };
   const onNotifiedPress = () => {
     setNotificationsEnabled(!notificationsEnabled);
     let data = {
@@ -86,6 +97,7 @@ const Profile = () => {
     connectionrequest()
       .then(() => {
         dispatch(settingRequest({}))
+        dispatch(getProfileRequest({}))
       })
       .catch(err => {
         ToastAlert('Please connect To Internet');
@@ -111,9 +123,17 @@ const Profile = () => {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[COLORS.primary]} // Android
+              tintColor={COLORS.primary} // iOS
+            />
+          }
         >
           {/* Identity Card */}
-          <View style={styles.identityRow}>
+          <TouchableOpacity style={styles.identityRow} onPress={() => navigate('MyProfile')}>
             <Image
               source={{ uri: getProfileRes?.data?.profile_image }}
               style={styles.avatarImage}
@@ -123,21 +143,21 @@ const Profile = () => {
               <Text style={styles.identityPlan}>{getProfileRes?.data?.
                 subscription?.plan_name}</Text>
             </View>
-            <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => navigate('MyProfile')}>
+            <View hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} >
               <Image source={ICONS.vectorPinkNext} style={styles.nextArrow} resizeMode="contain" />
-            </TouchableOpacity>
-          </View>
+            </View>
+          </TouchableOpacity>
 
           {/* Separator */}
           <View style={styles.horizontalDivider} />
 
           {/* Stats Bar */}
           <View style={styles.statsContainer}>
-            {renderStatsColumn('LIKES', '08')}
+            {renderStatsColumn('LIKES', getProfileRes?.data?.likes_count)}
             <View style={styles.verticalDivider} />
-            {renderStatsColumn('BOOSTS', '10')}
+            {renderStatsColumn('BOOSTS', '0')}
             <View style={styles.verticalDivider} />
-            {renderStatsColumn('Messages', '25')}
+            {renderStatsColumn('Messages', getProfileRes?.data?.chat_member_count)}
           </View>
 
           {/* Options Menu List */}

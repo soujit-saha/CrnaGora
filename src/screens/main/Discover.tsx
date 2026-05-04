@@ -12,6 +12,8 @@ import {
     TextInput,
     Platform,
     PermissionsAndroid,
+    ScrollView,
+    RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -25,10 +27,12 @@ import normalize from '../../utils/helper/normalize';
 import { navigate } from '../../utils/helper/RootNavigation';
 import connectionrequest from '../../utils/helper/NetInfo';
 import { useDispatch, useSelector } from 'react-redux';
-import { getProfileRequest, peopleListRequest, swipeRequest } from '../../redux/reducer/MainReducer';
+import { getProfileRequest, peopleListRequest, swipeRequest, updateLocationRequest, startChatRequest } from '../../redux/reducer/MainReducer';
 import ToastAlert from '../../utils/helper/Toast';
 import Loader from '../../utils/helper/Loader';
 import { Slider } from '@miblanchard/react-native-slider';
+import LocationPickerModal from '../../component/LocationPickerModal';
+import { masterdropdownRequest } from '../../redux/reducer/AuthReducer';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -95,7 +99,10 @@ const DATA = [
 
 const Discover = () => {
     const dispatch = useDispatch();
-    const { isMainLoading, peopleListRes, swipeRes } = useSelector((state: any) => state.MainReducer);
+    const [interestedIn, setInterestedIn] = useState('');
+    const { isReqLoading, masterdropdownRes } = useSelector((state: any) => state.AuthReducer);
+    const { isMainLoading, peopleListRes, swipeRes, startChatRes, status } = useSelector((state: any) => state.MainReducer);
+    const [isStartingChat, setIsStartingChat] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isMatchModalVisible, setIsMatchModalVisible] = useState(false);
     const [isFilterVisible, setIsFilterVisible] = useState(false);
@@ -104,6 +111,20 @@ const Discover = () => {
     const [Distance, setDistance] = useState<number>(40);
     const [location, setLocation] = useState('');
     const [currentAddress, setCurrentAddress] = useState('');
+    const [selectedLocationLatLng, setSelectedLocationLatLng] = useState<{ lat: number, lng: number } | null>(null);
+    const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+
+    const onRefresh = () => {
+        setRefreshing(true);
+        dispatch(peopleListRequest({ page: 1 }));
+        dispatch(getProfileRequest({}));
+        requestLocationPermission();
+        setTimeout(() => {
+            setRefreshing(false);
+        }, 1500);
+    };
+
     const position = useRef(new Animated.ValueXY()).current;
 
     const latestIndex = useRef(currentIndex);
@@ -141,11 +162,13 @@ const Discover = () => {
         }
     };
 
+
     const getCurrentLocation = (highAccuracy = true) => {
         Geolocation.getCurrentPosition(
             async (position) => {
                 const { latitude, longitude } = position.coords;
                 fetchAddress(latitude, longitude);
+
             },
             (error) => {
                 console.log('Location Error:', error.code, error.message);
@@ -160,10 +183,10 @@ const Discover = () => {
                     setCurrentAddress(errorMsg);
                 }
             },
-            { 
-                enableHighAccuracy: highAccuracy, 
-                timeout: highAccuracy ? 15000 : 30000, 
-                maximumAge: 10000 
+            {
+                enableHighAccuracy: highAccuracy,
+                timeout: highAccuracy ? 15000 : 30000,
+                maximumAge: 10000
             },
         );
     };
@@ -184,6 +207,11 @@ const Discover = () => {
                 const displayCity = city || town || village || suburb || county || 'Unknown';
                 const displayState = state || country || '';
                 setCurrentAddress(`${displayCity}, ${displayState}`);
+                dispatch(updateLocationRequest({
+                    lat: lat,
+                    lng: lon,
+                    location: `${displayCity}, ${displayState}`
+                }));
             } else {
                 setCurrentAddress('Address not found');
             }
@@ -204,8 +232,9 @@ const Discover = () => {
         PanResponder.create({
             onStartShouldSetPanResponder: () => false,
             onMoveShouldSetPanResponder: (evt, gestureState) => {
-                // Only hijack the responder if sweeping more than 5px to allow taps!
-                return Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5;
+                // Only hijack the responder if sweeping more than 10px horizontally
+                // to allow vertical swipes to be picked up by the ScrollView (Pull to Refresh)
+                return Math.abs(gestureState.dx) > 10;
             },
             onPanResponderMove: (evt, gestureState) => {
                 position.setValue({ x: gestureState.dx, y: gestureState.dy });
@@ -250,7 +279,7 @@ const Discover = () => {
             // Only fetch if there's exactly a multiple of 10, meaning there might be more data
             if (currentTotal > 0 && currentTotal % 10 === 0) {
                 const nextPage = Math.floor(currentTotal / 10) + 1;
-                dispatch(peopleListRequest({ page: nextPage, limit: 10 }));
+                dispatch(peopleListRequest({ page: nextPage }));
             }
         }
     };
@@ -443,11 +472,33 @@ const Discover = () => {
             .reverse();
     };
 
+    const onFilterPress = () => {
+        console.log("Filter Pressed", Age, Distance, location, interestedIn);
+        connectionrequest()
+            .then(() => {
+                setIsFilterVisible(false);
+                dispatch(peopleListRequest({
+                    page: 1,
+                    distance: Distance,
+                    age_max: Age[1],
+                    age_min: Age[0],
+                    location: location,
+                    gender: interestedIn
+                }))
+
+            })
+            .catch(err => {
+                ToastAlert('Please connect To Internet');
+            });
+
+    }
+
     useEffect(() => {
         connectionrequest()
             .then(() => {
-                dispatch(peopleListRequest({ page: 1, limit: 10 }))
+                dispatch(peopleListRequest({ page: 1 }))
                 dispatch(getProfileRequest({}))
+                dispatch(masterdropdownRequest({}));
                 requestLocationPermission();
             })
             .catch(err => {
@@ -464,73 +515,112 @@ const Discover = () => {
 
 
 
+    useEffect(() => {
+        if (status === 'Main/startChatSuccess' && startChatRes && isStartingChat) {
+            setIsStartingChat(false);
+            const currentUser = peopleListRes?.[currentIndex];
+            if (currentUser) {
+                navigate('Chat', {
+                    chatId: startChatRes.data?.id,
+                    userId: currentUser.id,
+                    userName: currentUser.name,
+                    userImage: currentUser.profile_image || currentUser.image_path || 'https://via.placeholder.com/100',
+                });
+            }
+        }
+    }, [status, startChatRes, isStartingChat, currentIndex, peopleListRes]);
+
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
             <Loader visible={isMainLoading} />
-            {/* Custom Discover Header */}
-            <View style={styles.header}>
-                <TouchableOpacity style={styles.headerBtn}>
-                    <Image
-                        source={ICONS.back}
-                        style={styles.backIcon}
-                        resizeMode="contain"
-                    />
-                </TouchableOpacity>
 
-                <View style={styles.headerCenter}>
-                    <Text style={styles.headerTitle}>Discover</Text>
-                    <Text style={styles.headerSubtitle}>{currentAddress || 'Locating...'}</Text>
+            <ScrollView
+                contentContainerStyle={{ flexGrow: 1 }}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={[COLORS.primary]} // Android
+                        tintColor={COLORS.primary} // iOS
+                    />
+                }
+                showsVerticalScrollIndicator={false}
+            >
+                {/* Custom Discover Header */}
+                <View style={styles.header}>
+                    <TouchableOpacity style={styles.headerBtn}>
+                        <Image
+                            source={ICONS.back}
+                            style={styles.backIcon}
+                            resizeMode="contain"
+                        />
+                    </TouchableOpacity>
+
+                    <View style={styles.headerCenter}>
+                        <Text style={styles.headerTitle}>Discover</Text>
+                        <Text style={styles.headerSubtitle}>{currentAddress || 'Locating...'}</Text>
+                    </View>
+
+                    <TouchableOpacity style={styles.headerBtn} onPress={() => setIsFilterVisible(true)}>
+                        <Image
+                            source={ICONS.filter}
+                            style={styles.backIcon}
+                            resizeMode="contain"
+                        />
+                    </TouchableOpacity>
                 </View>
 
-                <TouchableOpacity style={styles.headerBtn} onPress={() => setIsFilterVisible(true)}>
-                    <Image
-                        source={ICONS.filter}
-                        style={styles.backIcon}
-                        resizeMode="contain"
-                    />
-                </TouchableOpacity>
-            </View>
+                {/* Swipable Image Deck */}
+                <View style={styles.deckContainer}>{renderCards()}</View>
 
-            {/* Swipable Image Deck */}
-            <View style={styles.deckContainer}>{renderCards()}</View>
-
-            {/* Swipe Call to Actions Overlay */}
-            <View style={styles.bottomActions}>
+                {/* Swipe Call to Actions Overlay */}
+                {peopleListRes?.length > 0 && <View style={styles.bottomActions}>
 
 
-                <TouchableOpacity style={styles.floatBtnSmall} onPress={() => forceSwipe('left')}>
-                    <Image
-                        source={ICONS.closeSmall}
-                        style={styles.actionIconColor}
-                        resizeMode="contain"
-                    />
-                </TouchableOpacity>
+                    <TouchableOpacity style={styles.floatBtnSmall} onPress={() => forceSwipe('left')}>
+                        <Image
+                            source={ICONS.closeSmall}
+                            style={styles.actionIconColor}
+                            resizeMode="contain"
+                        />
+                    </TouchableOpacity>
 
-                <TouchableOpacity style={{ ...styles.floatBtnSmall, backgroundColor: COLORS.primaryLight }}>
-                    <Image
-                        source={ICONS.message}
-                        style={styles.actionIconColor}
-                        resizeMode="contain"
-                    />
-                </TouchableOpacity>
+                    <TouchableOpacity
+                        style={{ ...styles.floatBtnSmall, backgroundColor: COLORS.primaryLight }}
+                        onPress={() => {
+                            const currentUserId = peopleListRes?.[currentIndex]?.id;
+                            if (currentUserId) {
+                                setIsStartingChat(true);
+                                dispatch(startChatRequest({ user_ids: [currentUserId] }));
+                            }
+                        }}
+                    >
+                        <Image
+                            source={ICONS.message}
+                            style={styles.actionIconColor}
+                            resizeMode="contain"
+                        />
+                    </TouchableOpacity>
 
-                <TouchableOpacity style={styles.floatBtnSmall} onPress={() => forceSwipe('right')}>
-                    <Image
-                        source={ICONS.like}
-                        style={[styles.actionIconColor, { height: ms(33), width: ms(33) }]}
-                        resizeMode="contain"
-                    />
-                </TouchableOpacity>
+                    <TouchableOpacity style={styles.floatBtnSmall} onPress={() => forceSwipe('right')}>
+                        <Image
+                            source={ICONS.like}
+                            style={[styles.actionIconColor, { height: ms(33), width: ms(33) }]}
+                            resizeMode="contain"
+                        />
+                    </TouchableOpacity>
 
-                <TouchableOpacity style={styles.floatBtnSmall}>
-                    <Image
-                        source={ICONS.star}
-                        style={[styles.actionIconColor]}
-                        resizeMode="contain"
-                    />
-                </TouchableOpacity>
-            </View>
+                    <TouchableOpacity style={styles.floatBtnSmall}>
+                        <Image
+                            source={ICONS.star}
+                            style={[styles.actionIconColor]}
+                            resizeMode="contain"
+                        />
+                    </TouchableOpacity>
+                </View>}
+
+            </ScrollView>
 
             {/* Match Modal */}
             <Modal
@@ -599,7 +689,7 @@ const Discover = () => {
                 style={styles.modalStyle}
                 backdropOpacity={0.4}
             >
-                <View style={styles.modalContent}>
+                <ScrollView style={styles.modalContent}>
                     <View style={styles.modalHandle} />
                     <View style={styles.modalHeaderRow}>
                         <View style={{ width: ms(40) }} />
@@ -611,25 +701,33 @@ const Discover = () => {
 
                     {/* Select Section */}
                     <Text style={styles.filterSectionTitle}>Interested in</Text>
+
+
+                    {/* Segmented Control */}
                     <View style={styles.segmentedControl}>
-                        {['Women', 'Men', 'Both'].map((option) => {
-                            const isActive = option === filterSelect;
+                        {masterdropdownRes?.dating_preferences?.map((option: any, index: any) => {
                             return (
                                 <TouchableOpacity
-                                    key={option}
-                                    style={[styles.segmentBtn, isActive && styles.segmentBtnActive]}
-                                    onPress={() => setFilterSelect(option)}
+                                    key={`${index}`}
+                                    style={[styles.segmentBtn, option.id == interestedIn && styles.segmentBtnActive]}
+                                    onPress={() => setInterestedIn(option?.id)}
                                     activeOpacity={0.8}
                                 >
-                                    <Text style={[styles.segmentText, isActive && styles.segmentTextActive]}>
-                                        {option}
+                                    <Text
+                                        style={{ ...styles.segmentText, color: option.id == interestedIn ? COLORS.white : COLORS.black }}
+                                    >
+                                        {option?.name}
                                     </Text>
                                 </TouchableOpacity>
                             );
                         })}
                     </View>
 
-                    {renderInput('Location', 'Enter location', location, setLocation)}
+                    <TouchableOpacity activeOpacity={0.8} onPress={() => setIsLocationModalVisible(true)}>
+                        <View pointerEvents="none">
+                            {renderInput('Location', 'Enter location', location, setLocation)}
+                        </View>
+                    </TouchableOpacity>
 
                     {/* Distance Section */}
                     <View style={styles.sliderTitleRow}>
@@ -682,12 +780,28 @@ const Discover = () => {
 
 
                     {/* Apply Button */}
-                    <TouchableOpacity style={styles.applyBtn} onPress={() => setIsFilterVisible(false)}>
+                    <TouchableOpacity style={styles.applyBtn} onPress={() => onFilterPress()}>
                         <Text style={styles.applyBtnText}>Apply</Text>
                     </TouchableOpacity>
-                </View>
+                </ScrollView>
             </Modal>
 
+            {/* Location Picker Modal */}
+            <LocationPickerModal
+                isVisible={isLocationModalVisible}
+                onClose={() => setIsLocationModalVisible(false)}
+                onSelectLocation={(data, details) => {
+                    if (data && data.description) {
+                        setLocation(data.description);
+                    }
+                    if (details && details.geometry && details.geometry.location) {
+                        setSelectedLocationLatLng({
+                            lat: details.geometry.location.lat,
+                            lng: details.geometry.location.lng
+                        });
+                    }
+                }}
+            />
 
         </SafeAreaView>
     );
@@ -1157,28 +1271,35 @@ const styles = StyleSheet.create({
     },
     segmentedControl: {
         flexDirection: 'row',
-        height: mvs(50),
+        flexWrap: 'wrap',
+        minHeight: mvs(55),
         backgroundColor: COLORS.white,
         borderRadius: ms(15),
-        borderWidth: 1,
-        borderColor: '#EAEAEA',
-        marginBottom: mvs(25),
+        // borderWidth: 1,
+        // borderColor: COLORS.borderLight,
         overflow: 'hidden',
+        justifyContent: "space-between",
+        marginBottom: mvs(20),
     },
     segmentBtn: {
-        flex: 1,
+        width: '32%',
+        height: mvs(45),
         justifyContent: 'center',
         alignItems: 'center',
-        borderRightWidth: 1,
-        borderRightColor: '#EAEAEA',
+        borderRadius: ms(15),
+        borderWidth: 1,
+        borderColor: COLORS.borderLight,
+        overflow: 'hidden',
+        marginBottom: mvs(5)
     },
     segmentBtnActive: {
-        backgroundColor: '#ff4da6',
-        borderRightWidth: 0,
+        backgroundColor: COLORS.primary,
+        // Active doesn't show border
+        // borderRightWidth: 0,
     },
     segmentText: {
-        fontFamily: FONTS.regular,
-        fontSize: normalize(12),
+        fontFamily: FONTS.medium,
+        fontSize: normalize(13),
         color: COLORS.black,
     },
     segmentTextActive: {
@@ -1256,9 +1377,9 @@ const styles = StyleSheet.create({
         borderColor: '#FFF0F8', // subtle halo
     },
     applyBtn: {
-        height: mvs(55),
+        height: mvs(50),
         width: '100%',
-        backgroundColor: '#ffb3e6',
+        backgroundColor: COLORS.primary,
         justifyContent: 'center',
         alignItems: 'center',
         borderRadius: ms(16),

@@ -16,9 +16,11 @@ export interface MainState {
     getStatusCommentsRes?: any;
     addStatusCommentRes?: any;
     getUserStatusesRes?: any;
+    getMyStatusesRes?: any;
     swipeRes?: any;
     matchesListRes?: any;
     matchesBlockRes?: any;
+    updateLocationRes?: any;
     // Chat
     isChatLoading: boolean;
     chatListRes?: any;
@@ -43,9 +45,11 @@ const initialState: MainState = {
     getStatusCommentsRes: [],
     addStatusCommentRes: {},
     getUserStatusesRes: [],
+    getMyStatusesRes: [],
     swipeRes: {},
     matchesListRes: [],
     matchesBlockRes: [],
+    updateLocationRes: {},
     // Chat
     isChatLoading: false,
     chatListRes: [],
@@ -172,6 +176,26 @@ const MainSlice = createSlice({
         getUserStatusesRequest(state, action: PayloadAction<any>) { state.isMainLoading = true; state.status = action.type; },
         getUserStatusesSuccess(state, action: PayloadAction<any>) { state.isMainLoading = false; state.getUserStatusesRes = action.payload; state.status = action.type; },
         getUserStatusesFailure(state, action: PayloadAction<any>) { state.isMainLoading = false; state.error = action.payload?.error || 'getUserStatuses failed'; state.status = action.type; },
+
+        getMyStatusesRequest(state, action: PayloadAction<any>) { state.isMainLoading = true; state.status = action.type; },
+        getMyStatusesSuccess(state, action: PayloadAction<any>) { state.isMainLoading = false; state.getMyStatusesRes = action.payload; state.status = action.type; },
+        getMyStatusesFailure(state, action: PayloadAction<any>) { state.isMainLoading = false; state.error = action.payload?.error || 'getMyStatuses failed'; state.status = action.type; },
+
+
+        // update location
+        updateLocationRequest(state, action: PayloadAction<any>) {
+            // state.isMainLoading = true;
+            state.status = action.type;
+        },
+        updateLocationSuccess(state, action: PayloadAction<any>) {
+            // state.isMainLoading = false;
+            state.updateLocationRes = action.payload; state.status = action.type;
+        },
+        updateLocationFailure(state, action: PayloadAction<any>) {
+
+            // state.isMainLoading = false; 
+            state.error = action.payload?.error || 'updateLocation failed'; state.status = action.type;
+        },
 
         // Swipe
         swipeRequest(state, action: PayloadAction<any>) {
@@ -342,6 +366,8 @@ export const {
     getStatusCommentsRequest, getStatusCommentsSuccess, getStatusCommentsFailure,
     addStatusCommentRequest, addStatusCommentSuccess, addStatusCommentFailure,
     getUserStatusesRequest, getUserStatusesSuccess, getUserStatusesFailure,
+    getMyStatusesRequest, getMyStatusesSuccess, getMyStatusesFailure,
+    updateLocationRequest, updateLocationSuccess, updateLocationFailure,
 
     swipeRequest,
     swipeSuccess,

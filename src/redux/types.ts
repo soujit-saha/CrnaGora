@@ -1,9 +1,9 @@
 // Common Redux types for the application
 
 // API Response wrapper
-export interface ApiResponse<T = any> {
+export interface ApiResponse<> {
   status: number;
-  data: T;
+  data: any;
   message?: string;
   error?: string;
 }

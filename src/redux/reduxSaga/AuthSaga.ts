@@ -387,8 +387,10 @@ export function* notificationSetUpSaga(
 
     const scalarFields = [
       'enable_notification',
-
-
+      'distance_range',
+      'age_range_end',
+      'age_range_start',
+      'dating_preferences',
     ];
 
     scalarFields.forEach(key => {
@@ -408,6 +410,7 @@ export function* notificationSetUpSaga(
     console.log('39', response);
     if (response?.status == 201 || response?.status == 200) {
       yield put(notificationSetUpSuccess(response?.data?.access_token));
+      ToastAlert("Updated successfully")
       navigate('Plan')
     } else {
       yield put(notificationSetUpFailure(response?.data));

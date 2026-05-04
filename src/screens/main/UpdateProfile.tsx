@@ -25,7 +25,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import moment from 'moment';
 import LocationPickerModal from '../../component/LocationPickerModal';
 
-const ProfileDetails = ({ navigation, route }: any) => {
+const UpdateProfile = ({ navigation, route }: any) => {
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [profession, setProfession] = useState('');
@@ -159,7 +159,7 @@ const ProfileDetails = ({ navigation, route }: any) => {
                 keyboardShouldPersistTaps="handled"
             >
                 {/* Title */}
-                <Text style={styles.title}>Profile details</Text>
+                <Text style={styles.title}>Update Profile</Text>
 
                 {/* Avatar Section */}
                 <View style={styles.avatarContainer}>
@@ -246,7 +246,7 @@ const ProfileDetails = ({ navigation, route }: any) => {
     );
 };
 
-export default ProfileDetails;
+export default UpdateProfile;
 
 const styles = StyleSheet.create({
     container: {

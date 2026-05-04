@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
-import { COLORS, FONTS, ICONS } from '../../utils/constants';
+import { COLORS, constants, FONTS, ICONS } from '../../utils/constants';
 import { ms, mvs } from '../../utils/helper/metric';
 import normalize from '../../utils/helper/normalize';
 import { navigate } from '../../utils/helper/RootNavigation';
@@ -29,9 +29,11 @@ import {
     getUserStatusesRequest,
     chatListRequest,
     startChatRequest,
+    getMyStatusesRequest,
 } from '../../redux/reducer/MainReducer';
 import { useFocusEffect } from '@react-navigation/native';
 import { launchImageLibrary } from 'react-native-image-picker';
+import axios from 'axios';
 
 const FILTERS = ['All', 'Unread', 'Most Recent', 'Nearest'];
 
@@ -42,6 +44,7 @@ const Messages = () => {
     const [filterOthers, setFilterOthers] = useState('New matches');
     const [searchTerm, setSearchTerm] = useState('');
     const [refreshing, setRefreshing] = useState(false);
+    const [showSearch, setShowSearch] = useState(false);
 
     // Story-related state
     const [isAddStoryModalVisible, setIsAddStoryModalVisible] = useState(false);
@@ -50,8 +53,11 @@ const Messages = () => {
     const [textStoryBg, setTextStoryBg] = useState(COLORS.primary);
 
     const dispatch = useDispatch();
-    const { getStatusesRes, chatListRes, isChatLoading, startChatRes, status } = useSelector(
+    const { getStatusesRes, chatListRes, isChatLoading, startChatRes, status, getProfileRes, getMyStatusesRes } = useSelector(
         (state: any) => state.MainReducer,
+    );
+    const { getTokenResponse } = useSelector(
+        (state: any) => state.AuthReducer,
     );
 
     const currentUserId = useSelector((state: any) => {
@@ -64,6 +70,7 @@ const Messages = () => {
         useCallback(() => {
             dispatch(chatListRequest({}));
             dispatch(getStatusesRequest({}));
+            dispatch(getMyStatusesRequest(getProfileRes?.data?.id));
         }, []),
     );
 
@@ -74,10 +81,24 @@ const Messages = () => {
         setTimeout(() => setRefreshing(false), 1500);
     };
 
+
+    const uploadStatus = (data: FormData) => {
+        console.log("data: ", data)
+        axios.post(constants.BASE_URL + '/statuses', data, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+                'Authorization': 'Bearer ' + getTokenResponse,
+            },
+        })
+            .then(response => console.log("axios status res: ", response.data))
+            .catch(error => console.log('axios status error: ', error));
+    }
+
     const handlePickImage = () => {
         setIsAddStoryModalVisible(false);
-        launchImageLibrary({ mediaType: 'photo', quality: 0.8 }, (response) => {
+        launchImageLibrary({ mediaType: 'photo' }, (response) => {
             if (response.didCancel || response.errorCode) return;
+            console.log('handlePickImage: ', response);
             const asset = response.assets?.[0];
             if (asset) {
                 const formData = new FormData();
@@ -85,8 +106,9 @@ const Messages = () => {
                 formData.append('media_file', {
                     uri: asset.uri,
                     type: asset.type || 'image/jpeg',
-                    name: asset.fileName || `status_${Date.now()}.jpg`,
-                } as any);
+                    name: asset?.uri?.replace(/^.*[\\\/]/, '') || `status_${Date.now()}.jpg`,
+                });
+                // uploadStatus(formData)
                 dispatch(createStatusRequest(formData));
             }
         });
@@ -146,11 +168,20 @@ const Messages = () => {
     }, [chatListRes, currentUserId]);
 
     const filteredChats = React.useMemo(() => {
-        if (!searchTerm) return chatList;
-        return chatList.filter((c: any) =>
-            c.name?.toLowerCase().includes(searchTerm.toLowerCase()),
-        );
-    }, [chatList, searchTerm]);
+        let result = chatList;
+
+        if (activeFilter === 'Unread') {
+            result = result.filter((c: any) => c.unread > 0);
+        }
+
+        if (searchTerm) {
+            result = result.filter((c: any) =>
+                c.name?.toLowerCase().includes(searchTerm.toLowerCase()),
+            );
+        }
+
+        return result;
+    }, [chatList, searchTerm, activeFilter]);
 
     const handleChatPress = (chat: any) => {
         navigate('Chat', {
@@ -166,7 +197,7 @@ const Messages = () => {
         const ringColors = allRead ? [COLORS.lightGray, COLORS.lightGray] : ['#FF9D33', COLORS.primary];
 
         return (
-            <TouchableOpacity key={item.id} style={styles.activityColumn} onPress={() => navigate('Stories', item)}>
+            <TouchableOpacity key={item.id} style={styles.activityColumn} onPress={() => navigate('Stories', { data: item, type: 2 })}>
                 <LinearGradient
                     colors={ringColors}
                     style={styles.ringContainer}
@@ -190,13 +221,14 @@ const Messages = () => {
             <View style={styles.activityColumn}>
                 <TouchableOpacity
                     style={styles.addStoryContainer}
-                    onPress={() => setIsAddStoryModalVisible(true)}
+                    onPress={() => navigate('Stories', { data: getMyStatusesRes?.data, type: 1 })}
                 >
                     <View style={styles.addStoryAvatarWrapper}>
                         <Image source={{ uri: userImage }} style={styles.activityImage} />
-                        <View style={styles.plusIconBadge}>
+                        <TouchableOpacity style={styles.plusIconBadge}
+                            onPress={() => setIsAddStoryModalVisible(true)}>
                             <Text style={styles.plusText}>+</Text>
-                        </View>
+                        </TouchableOpacity>
                     </View>
                 </TouchableOpacity>
                 <Text style={styles.activityName}>You</Text>
@@ -232,22 +264,22 @@ const Messages = () => {
             <View style={styles.headerContainer}>
                 <Text style={styles.headerTitle}>Messages</Text>
                 <View style={styles.headerActionsFixed}>
-                    <TouchableOpacity style={styles.headerBtn}>
+                    <TouchableOpacity style={styles.headerBtn} onPress={() => setShowSearch(!showSearch)}>
                         <Image source={ICONS.search} style={styles.headerIcon} resizeMode="contain" />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.headerBtn} onPress={() => setIsFilterVisible(true)}>
+                    {/* <TouchableOpacity style={styles.headerBtn} onPress={() => setIsFilterVisible(true)}>
                         <Image source={ICONS.filter} style={styles.headerIcon} resizeMode="contain" />
-                    </TouchableOpacity>
+                    </TouchableOpacity> */}
                 </View>
             </View>
 
             {/* Search Input */}
-            <View style={styles.searchSection}>
+            {showSearch && <View style={styles.searchSection}>
                 <View style={styles.searchInputWrapper}>
                     <Image source={ICONS.search} style={styles.searchIcon} />
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Search for messages"
+                        placeholder="Search by name"
                         placeholderTextColor={COLORS.textTertiary}
                         value={searchTerm}
                         onChangeText={setSearchTerm}
@@ -258,13 +290,15 @@ const Messages = () => {
                         </TouchableOpacity>
                     ) : null}
                 </View>
-            </View>
+            </View>}
 
             <ScrollView
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} // Android
+                        tintColor={COLORS.primary} // iOS
+                    />
                 }
             >
                 {/* Activities Section */}
@@ -310,10 +344,12 @@ const Messages = () => {
                         </View>
                     ) : filteredChats.length === 0 ? (
                         <View style={styles.emptyContainer}>
-                            <Text style={styles.emptyEmoji}>💬</Text>
-                            <Text style={styles.emptyTitle}>No conversations yet</Text>
+                            <Text style={styles.emptyEmoji}>{searchTerm ? '🔍' : '💬'}</Text>
+                            <Text style={styles.emptyTitle}>
+                                {searchTerm ? 'No matches found' : 'No conversations yet'}
+                            </Text>
                             <Text style={styles.emptySubtitle}>
-                                Match with someone and start chatting!
+                                {searchTerm ? `We couldn't find anyone named "${searchTerm}"` : 'Match with someone and start chatting!'}
                             </Text>
                         </View>
                     ) : (

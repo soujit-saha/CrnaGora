@@ -60,12 +60,12 @@ const Chat = ({ route }: any) => {
     });
     const authToken = useSelector((state: any) => state.AuthReducer.getTokenResponse);
 
-    // If no chatId was provided, start a chat first
-    useEffect(() => {
-        if (!chatId && userId) {
-            dispatch(startChatRequest({ user_id: userId }));
-        }
-    }, []);
+    // // If no chatId was provided, start a chat first
+    // useEffect(() => {
+    //     if (!chatId && userId) {
+    //         dispatch(startChatRequest({ user_ids: [userId] }));
+    //     }
+    // }, []);
 
     // Handle startChat success
     useEffect(() => {

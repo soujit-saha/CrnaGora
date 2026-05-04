@@ -9,6 +9,7 @@ import {
     ImageBackground,
     Dimensions,
     StatusBar,
+    RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -85,6 +86,15 @@ const Matches = () => {
     const { isMainLoading, matchesListRes } = useSelector((state: any) => state.MainReducer);
     const [isRemoveModalVisible, setIsRemoveModalVisible] = useState(false);
     const [selectedMatch, setSelectedMatch] = useState<any>(null);
+    const [refreshing, setRefreshing] = useState(false);
+
+    const onRefresh = () => {
+        setRefreshing(true);
+        dispatch(matchesListRequest({}));
+        setTimeout(() => {
+            setRefreshing(false);
+        }, 1500);
+    };
 
     const onRemovePress = (item: any) => {
         setSelectedMatch(item);
@@ -119,6 +129,14 @@ const Matches = () => {
             <ScrollView
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={[COLORS.primary]} // Android
+                        tintColor={COLORS.primary} // iOS
+                    />
+                }
             >
                 {/* Header section */}
                 <View style={styles.headerContainer}>

@@ -24,6 +24,7 @@ import ToastAlert from '../../utils/helper/Toast';
 import { confirmPaymentRequest } from '../../redux/reducer/MainReducer';
 import Loader from '../../utils/helper/Loader';
 import moment from 'moment';
+import BackButtonHeader from '../../component/BackButtonHeader';
 
 
 const Subscription = () => {
@@ -152,7 +153,11 @@ const Subscription = () => {
                 end={{ x: 0, y: 0.2 }}
             />
 
+            <View style={{ width: '100%', paddingHorizontal: ms(12) }}>
 
+
+                <BackButtonHeader />
+            </View>
 
             <ScrollView
                 contentContainerStyle={styles.scrollContent}

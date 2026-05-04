@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   StyleSheet,
   Text,
@@ -11,21 +11,26 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, FONTS, ICONS } from '../../utils/constants';
 import { ms, mvs } from '../../utils/helper/metric';
 import normalize from '../../utils/helper/normalize';
 import { goBack } from '../../utils/helper/RootNavigation';
-import { markAsReadRequest } from '../../redux/reducer/MainReducer';
+import { clearChatMessages, deleteStatusRequest, markAsReadRequest } from '../../redux/reducer/MainReducer';
 
 const Stories = ({ route }: any) => {
   const dispatch = useDispatch();
+  const { getProfileRes } = useSelector((state: any) => state.MainReducer);
   const [message, setMessage] = useState('');
-  const data = route?.params;
-  const statuses = data?.statuses || [];
+  const { data, type } = route?.params;
+  const initialStatuses = type == 2 ? data?.statuses : data;
+  const [statuses, setStatuses] = useState<any[]>(Array.isArray(initialStatuses) ? initialStatuses : (initialStatuses ? [initialStatuses] : []));
   const [currentIndex, setCurrentIndex] = useState(0);
   const progress = useRef(new Animated.Value(0)).current;
+
+  console.log("data", statuses);
 
   // Mark status as read whenever the current status changes
   useEffect(() => {
@@ -76,37 +81,72 @@ const Stories = ({ route }: any) => {
     }
   };
 
+  const onDeleteStatus = () => {
+    Alert.alert(
+      "Delete Status",
+      "Are you sure you want to delete this status?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Delete",
+          onPress: () => {
+            const currentStatusId = statuses[currentIndex].id;
+            dispatch(deleteStatusRequest(currentStatusId));
+
+            // Remove locally
+            progress.stopAnimation();
+            const newStatuses = [...statuses];
+            newStatuses.splice(currentIndex, 1);
+            setStatuses(newStatuses);
+
+            if (newStatuses.length === 0) {
+              goBack();
+            } else if (currentIndex >= newStatuses.length) {
+              setCurrentIndex(newStatuses.length - 1);
+            } else {
+              startAnimation();
+            }
+          },
+          style: "destructive"
+        }
+      ]
+    );
+  }
+
   const currentStatus = statuses[currentIndex];
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: COLORS.white }}>
       {/* Background Layer */}
       {currentStatus?.type === 'image' ? (
         <Image
           source={{ uri: currentStatus.content }}
           style={StyleSheet.absoluteFill}
-          resizeMode="cover"
+          resizeMode="contain"
         />
       ) : (
-        <View 
+        <View
           style={[
-            StyleSheet.absoluteFill, 
+            StyleSheet.absoluteFill,
             { backgroundColor: currentStatus?.background_color || COLORS.primary }
-          ]} 
+          ]}
         />
       )}
 
       {/* Tap Regions Layer */}
       <View style={[StyleSheet.absoluteFill, { flexDirection: 'row' }]}>
-        <TouchableOpacity 
-          activeOpacity={1} 
-          style={{ flex: 1 }} 
-          onPress={handlePrevious} 
+        <TouchableOpacity
+          activeOpacity={1}
+          style={{ flex: 1 }}
+          onPress={handlePrevious}
         />
-        <TouchableOpacity 
-          activeOpacity={1} 
-          style={{ flex: 1 }} 
-          onPress={handleNext} 
+        <TouchableOpacity
+          activeOpacity={1}
+          style={{ flex: 1 }}
+          onPress={handleNext}
         />
       </View>
 
@@ -122,13 +162,13 @@ const Stories = ({ route }: any) => {
                     style={[
                       styles.progressBarFill,
                       {
-                        width: index < currentIndex 
-                          ? '100%' 
-                          : index === currentIndex 
+                        width: index < currentIndex
+                          ? '100%'
+                          : index === currentIndex
                             ? progress.interpolate({
-                                inputRange: [0, 1],
-                                outputRange: ['0%', '100%'],
-                              })
+                              inputRange: [0, 1],
+                              outputRange: ['0%', '100%'],
+                            })
                             : '0%'
                       }
                     ]}
@@ -142,15 +182,21 @@ const Stories = ({ route }: any) => {
           <View style={styles.headerRow} pointerEvents="box-none">
             <View style={styles.headerLeft} pointerEvents="none">
               <Image
-                source={{ uri: data?.image_path }}
+                source={{ uri: type == 1 ? getProfileRes?.data?.profile_image : data?.image_path }}
                 style={styles.avatarImage}
               />
-              <Text style={styles.headerName}>{data?.name}</Text>
+              <Text style={styles.headerName}>{type == 1 ? getProfileRes?.data?.name : data?.name}</Text>
             </View>
 
-            <TouchableOpacity style={styles.closeBtn} onPress={() => goBack()}>
-              <Image source={ICONS.closeSmall} style={styles.closeIcon} resizeMode="contain" />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: ms(10) }}>
+
+              {type == 1 && <TouchableOpacity style={styles.closeBtn} onPress={() => onDeleteStatus()}>
+                <Image source={ICONS.delete} style={styles.closeIcon} resizeMode="contain" />
+              </TouchableOpacity>}
+              <TouchableOpacity style={styles.closeBtn} onPress={() => goBack()}>
+                <Image source={ICONS.closeSmall} style={styles.closeIcon} resizeMode="contain" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Centered Text Content (within available space) */}
@@ -161,7 +207,7 @@ const Stories = ({ route }: any) => {
           </View>
 
           {/* Bottom Input Section */}
-          <KeyboardAvoidingView
+          {type == 2 && <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             pointerEvents="box-none"
           >
@@ -170,20 +216,20 @@ const Stories = ({ route }: any) => {
                 <TextInput
                   style={styles.textInput}
                   placeholder="Your message"
-                  placeholderTextColor="rgba(255,255,255,0.7)"
+                  placeholderTextColor="rgba(255,255,255,1)"
                   value={message}
                   onChangeText={setMessage}
                 />
-                <TouchableOpacity style={styles.stickerBtn}>
+                {/* <TouchableOpacity style={styles.stickerBtn}>
                   <Image source={ICONS.stickers} style={styles.stickerIcon} resizeMode="contain" />
-                </TouchableOpacity>
+                </TouchableOpacity> */}
               </View>
 
               <TouchableOpacity style={styles.sendBtn}>
                 <Image source={ICONS.send} style={styles.sendIcon} resizeMode="contain" />
               </TouchableOpacity>
             </View>
-          </KeyboardAvoidingView>
+          </KeyboardAvoidingView>}
         </SafeAreaView>
       </View>
     </View>
@@ -207,7 +253,7 @@ const styles = StyleSheet.create({
   progressBarBackground: {
     flex: 1,
     height: mvs(3),
-    backgroundColor: 'rgba(255,255,255,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.2)',
     borderRadius: ms(2),
     marginHorizontal: ms(2),
     overflow: 'hidden',
@@ -256,7 +302,7 @@ const styles = StyleSheet.create({
     width: ms(45),
     height: ms(45),
     borderRadius: ms(14),
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -275,10 +321,10 @@ const styles = StyleSheet.create({
     height: mvs(50),
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
     borderRadius: ms(25),
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
+    borderColor: 'rgba(0, 0, 0, 0.1)',
     paddingLeft: ms(20),
     paddingRight: ms(10),
     marginRight: ms(15),
@@ -302,9 +348,9 @@ const styles = StyleSheet.create({
     width: ms(50),
     height: ms(50),
     borderRadius: ms(15), // Rounded square like close button but larger
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
+    borderColor: 'rgba(0, 0, 0, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
