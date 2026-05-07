@@ -65,7 +65,7 @@ const MyProfile = () => {
         {/* Location Block */}
         <View style={styles.infoBlock}>
           <Text style={styles.infoTitle}>My Location</Text>
-          <Text style={styles.infoSubtitle}>12, USA, 52100</Text>
+          <Text style={styles.infoSubtitle}>{getProfileRes?.data?.location}</Text>
         </View>
 
         <View style={styles.divider} />

@@ -43,6 +43,17 @@ const Messages = () => {
     const [filterSelect, setFilterSelect] = useState('Women');
     const [filterOthers, setFilterOthers] = useState('New matches');
     const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSearchTerm(searchTerm);
+        }, 500);
+
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [searchTerm]);
     const [refreshing, setRefreshing] = useState(false);
     const [showSearch, setShowSearch] = useState(false);
 
@@ -68,15 +79,20 @@ const Messages = () => {
     // Fetch data on focus
     useFocusEffect(
         useCallback(() => {
-            dispatch(chatListRequest({}));
             dispatch(getStatusesRequest({}));
             dispatch(getMyStatusesRequest(getProfileRes?.data?.id));
-        }, []),
+        }, [getProfileRes?.data?.id]),
+    );
+
+    useFocusEffect(
+        useCallback(() => {
+            dispatch(chatListRequest({ search: debouncedSearchTerm, sort: activeFilter.toLowerCase() }));
+        }, [debouncedSearchTerm, activeFilter]),
     );
 
     const onRefresh = () => {
         setRefreshing(true);
-        dispatch(chatListRequest({}));
+        dispatch(chatListRequest({ search: debouncedSearchTerm, sort: activeFilter.toLowerCase() }));
         dispatch(getStatusesRequest({}));
         setTimeout(() => setRefreshing(false), 1500);
     };
@@ -94,21 +110,46 @@ const Messages = () => {
             .catch(error => console.log('axios status error: ', error));
     }
 
+    // const handlePickImage = () => {
+    //     setIsAddStoryModalVisible(false);
+    //     launchImageLibrary({ mediaType: 'photo' }, (response) => {
+    //         if (response.didCancel || response.errorCode) return;
+    //         console.log('handlePickImage: ', response);
+    //         const asset = response.assets?.[0];
+    //         if (asset) {
+    //             const formData = new FormData();
+    //             formData.append('type', 'image');
+    //             formData.append('media_file', {
+    //                 uri: asset.uri,
+    //                 type: asset.type || 'image/jpeg',
+    //                 name: asset?.uri?.replace(/^.*[\\\/]/, '') || `status_${Date.now()}.jpg`,
+    //             });
+    //             // uploadStatus(formData)
+    //             dispatch(createStatusRequest(formData));
+    //         }
+    //     });
+    // };
+
     const handlePickImage = () => {
         setIsAddStoryModalVisible(false);
         launchImageLibrary({ mediaType: 'photo' }, (response) => {
             if (response.didCancel || response.errorCode) return;
-            console.log('handlePickImage: ', response);
+
             const asset = response.assets?.[0];
             if (asset) {
                 const formData = new FormData();
                 formData.append('type', 'image');
+
+                // Clean up the URI for Android if necessary
+                const uri = Platform.OS === 'android' ? asset.uri : asset?.uri?.replace('file://', '');
+
                 formData.append('media_file', {
-                    uri: asset.uri,
+                    uri: asset.uri, // Usually asset.uri is fine directly
                     type: asset.type || 'image/jpeg',
-                    name: asset?.uri?.replace(/^.*[\\\/]/, '') || `status_${Date.now()}.jpg`,
+                    // Use asset.fileName if available, otherwise extract from URI
+                    name: asset.fileName || asset?.uri?.split('/').pop() || `status_${Date.now()}.jpg`,
                 });
-                // uploadStatus(formData)
+
                 dispatch(createStatusRequest(formData));
             }
         });
@@ -167,21 +208,6 @@ const Messages = () => {
         });
     }, [chatListRes, currentUserId]);
 
-    const filteredChats = React.useMemo(() => {
-        let result = chatList;
-
-        if (activeFilter === 'Unread') {
-            result = result.filter((c: any) => c.unread > 0);
-        }
-
-        if (searchTerm) {
-            result = result.filter((c: any) =>
-                c.name?.toLowerCase().includes(searchTerm.toLowerCase()),
-            );
-        }
-
-        return result;
-    }, [chatList, searchTerm, activeFilter]);
 
     const handleChatPress = (chat: any) => {
         navigate('Chat', {
@@ -216,21 +242,40 @@ const Messages = () => {
     const renderAddStory = () => {
         const profile = useSelector((state: any) => state.MainReducer.getProfileRes?.data || state.MainReducer.getProfileRes);
         const userImage = profile?.profile_image || profile?.image_path || 'https://via.placeholder.com/100';
+        const ringColors = getMyStatusesRes?.data?.length < 1 ? [COLORS.lightGray, COLORS.lightGray] : ['#FF9D33', COLORS.primary];
 
         return (
             <View style={styles.activityColumn}>
-                <TouchableOpacity
-                    style={styles.addStoryContainer}
-                    onPress={() => navigate('Stories', { data: getMyStatusesRes?.data, type: 1 })}
-                >
-                    <View style={styles.addStoryAvatarWrapper}>
+                <View>
+
+                    <TouchableOpacity disabled={getMyStatusesRes?.data?.length < 1}
+                        style={styles.addStoryContainer}
+                        onPress={() => navigate('Stories', { data: getMyStatusesRes?.data, type: 1 })}
+                    >
+                        {/* <View style={styles.addStoryAvatarWrapper}>
                         <Image source={{ uri: userImage }} style={styles.activityImage} />
                         <TouchableOpacity style={styles.plusIconBadge}
                             onPress={() => setIsAddStoryModalVisible(true)}>
                             <Text style={styles.plusText}>+</Text>
                         </TouchableOpacity>
-                    </View>
-                </TouchableOpacity>
+                    </View> */}
+
+                        <LinearGradient
+                            colors={ringColors}
+                            style={styles.ringContainer}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                        >
+                            <View style={styles.ringInnerSpace}>
+                                <Image source={{ uri: userImage || 'https://via.placeholder.com/100' }} style={styles.activityImage} />
+                            </View>
+                        </LinearGradient>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.plusIconBadge}
+                        onPress={() => setIsAddStoryModalVisible(true)}>
+                        <Text style={styles.plusText}>+</Text>
+                    </TouchableOpacity>
+                </View>
                 <Text style={styles.activityName}>You</Text>
             </View>
         );
@@ -342,7 +387,7 @@ const Messages = () => {
                             <ActivityIndicator size="large" color={COLORS.primary} />
                             <Text style={styles.loadingText}>Loading chats...</Text>
                         </View>
-                    ) : filteredChats.length === 0 ? (
+                    ) : chatList.length === 0 ? (
                         <View style={styles.emptyContainer}>
                             <Text style={styles.emptyEmoji}>{searchTerm ? '🔍' : '💬'}</Text>
                             <Text style={styles.emptyTitle}>
@@ -353,7 +398,7 @@ const Messages = () => {
                             </Text>
                         </View>
                     ) : (
-                        filteredChats.map((msg: any) => (
+                        chatList.map((msg: any) => (
                             <TouchableOpacity
                                 key={msg.id}
                                 style={styles.messageRow}
@@ -527,7 +572,7 @@ const Messages = () => {
                         <View style={styles.textStoryInputWrapper}>
                             <TextInput
                                 style={styles.textStoryInput}
-                                placeholder="Type something..."
+                                placeholder="Type a status"
                                 placeholderTextColor="rgba(255,255,255,0.6)"
                                 multiline
                                 value={textStoryContent}
@@ -1029,8 +1074,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: ms(40),
     },
     textStoryInput: {
-        fontFamily: FONTS.bold,
-        fontSize: normalize(32),
+        fontFamily: FONTS.semiBold,
+        fontSize: normalize(26),
         color: COLORS.white,
         textAlign: 'center',
         width: '100%',

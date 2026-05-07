@@ -22,8 +22,8 @@ export default function Loader(props) {
         justifyContent: 'center',
       }}
     >
-      {/* <ActivityIndicator size="large" color={'white'} /> */}
-      <Image source={GIFS.loader} style={{ width: ms(140), height: ms(140) }} resizeMode="contain" />
+      <ActivityIndicator size="large" color={COLORS.primary} />
+      {/* <Image source={GIFS.loader} style={{ width: ms(140), height: ms(140) }} resizeMode="contain" /> */}
     </SafeAreaView>
   ) : null;
 }

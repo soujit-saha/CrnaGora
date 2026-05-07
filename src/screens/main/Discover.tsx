@@ -575,7 +575,7 @@ const Discover = () => {
                 <View style={styles.deckContainer}>{renderCards()}</View>
 
                 {/* Swipe Call to Actions Overlay */}
-                {peopleListRes?.length > 0 && <View style={styles.bottomActions}>
+                {(peopleListRes?.length > 0 && currentIndex < peopleListRes?.length) && <View style={styles.bottomActions}>
 
 
                     <TouchableOpacity style={styles.floatBtnSmall} onPress={() => forceSwipe('left')}>

@@ -37,7 +37,7 @@ const Subscription = () => {
 
     const selectedPlan = plansRes?.find((p: any) => p.id === selectedPlanId) || plansRes?.[0];
 
-    const subscriptionEndDate = getProfileRes?.data?.subscription?.end_date;
+    const subscriptionEndDate = getProfileRes?.data?.subscription?.ends_at;
     const isSubscriptionActive = subscriptionEndDate
         ? moment().isSameOrBefore(moment(subscriptionEndDate, 'DD/MM/YYYY').endOf('day'))
         : false;
@@ -45,7 +45,7 @@ const Subscription = () => {
     const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
     const openStripeSDK = async () => {
-        setLoading(true)
+        // setLoading(true)
         try {
 
             const response = await fetch('https://tinder.swastechinfo.in/api/create-payment-intent', {
@@ -105,11 +105,13 @@ const Subscription = () => {
                 }
             } else {
                 dispatch(confirmPaymentRequest({
-                    "payment_intent_id": data?.data?.intent_id,
-                    "payment_status": "succeeded",
-                    // "card_last4": "string",
-                    // "card_brand": "string",
-                    // "error_message": "string"
+                    body: {
+                        "payment_intent_id": data?.data?.intent_id,
+                        "payment_status": "succeeded",
+                        // "card_last4": "string",
+                        // "card_brand": "string",
+                        // "error_message": "string"
+                    }, type: 2
                 }))
                 setLoading(false)
                 // Alert.alert('Success', 'Your payment is confirmed!');
@@ -144,7 +146,7 @@ const Subscription = () => {
 
     return (
         <SafeAreaView style={styles.container}>
-            <Loader visible={isReqLoading || isMainLoading || loading} />
+            <Loader visible={isReqLoading || isMainLoading} />
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
             <LinearGradient
                 colors={['rgba(254, 163, 224, 0.2)', '#FAFAFA']}
@@ -171,7 +173,7 @@ const Subscription = () => {
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                         <Text style={{ fontSize: ms(20), fontFamily: FONTS.bold, color: '#000' }}>Expires On</Text>
-                        <Text style={{ fontSize: ms(16), fontFamily: FONTS.semiBold, color: '#000' }}>{getProfileRes?.data?.subscription?.end_date ? moment(getProfileRes?.data?.subscription?.end_date).format('DD MMM YYYY') : "--"}</Text>
+                        <Text style={{ fontSize: ms(16), fontFamily: FONTS.semiBold, color: '#000' }}>{getProfileRes?.data?.subscription?.ends_at ? moment(getProfileRes?.data?.subscription?.ends_at).format('DD MMM YYYY') : "--"}</Text>
                     </View>
                 </View>
                 {/* Hero Headers */}

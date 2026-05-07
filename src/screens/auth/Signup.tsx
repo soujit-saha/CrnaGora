@@ -18,10 +18,11 @@ import BackButtonHeader from '../../component/BackButtonHeader';
 import CustomButton from '../../component/CustomButton';
 import { navigate } from '../../utils/helper/RootNavigation';
 import connectionrequest from '../../utils/helper/NetInfo';
-import { settingRequest } from '../../redux/reducer/AuthReducer';
-import { useDispatch } from 'react-redux';
+import { settingRequest, socialAuthRequest } from '../../redux/reducer/AuthReducer';
+import { useDispatch, useSelector } from 'react-redux';
 import ToastAlert from '../../utils/helper/Toast';
-import { useSelector } from 'react-redux';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import { LoginManager, AccessToken } from 'react-native-fbsdk-next';
 
 const Signup = ({ route }: any) => {
     const type = route.params;
@@ -34,6 +35,11 @@ const Signup = ({ route }: any) => {
     const [modalContent, setModalContent] = useState('');
 
     useEffect(() => {
+        // Configure Google Signin
+        GoogleSignin.configure({
+            webClientId: '660803418047-bv0rd72nj6t3mc5p12cmfj5clu3fqc80.apps.googleusercontent.com', // TODO: Add Google Web Client ID
+        });
+
         connectionrequest()
             .then(() => {
                 dispatch(settingRequest({}))
@@ -42,6 +48,53 @@ const Signup = ({ route }: any) => {
                 ToastAlert('Please connect To Internet');
             });
     }, [])
+
+    const handleGoogleLogin = async () => {
+        try {
+            await GoogleSignin.hasPlayServices();
+            const userInfo = await GoogleSignin.signIn();
+            // const tokens = await GoogleSignin.getTokens();
+
+            console.log("userInfo", userInfo);
+            // console.log("tokens", tokens);
+            // Using tokens.idToken, fallback to userInfo.data?.idToken if required based on version
+            // const token = tokens.idToken || (userInfo as any)?.data?.idToken;
+            if (userInfo) {
+                dispatch(socialAuthRequest({
+                    email: userInfo?.data?.user?.email,
+                    name: userInfo?.data?.user?.name,
+                    provider: 'google'
+                }));
+            }
+        } catch (error: any) {
+            if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+                // user cancelled the login flow
+            } else if (error.code === statusCodes.IN_PROGRESS) {
+                // operation is in progress already
+            } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+                ToastAlert('Play services not available or outdated');
+            } else {
+                ToastAlert('Google Sign-In Failed');
+            }
+        }
+    };
+
+    const handleFacebookLogin = async () => {
+        try {
+            const result = await LoginManager.logInWithPermissions(['public_profile', 'email']);
+            if (result.isCancelled) {
+                // user cancelled the login flow
+            } else {
+                const data = await AccessToken.getCurrentAccessToken();
+                if (data) {
+                    dispatch(socialAuthRequest({ provider: 'facebook', token: data.accessToken.toString() }));
+                }
+            }
+        } catch (error) {
+            ToastAlert('Facebook Login Failed');
+        }
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
@@ -82,14 +135,14 @@ const Signup = ({ route }: any) => {
 
                 {/* Social Login Buttons */}
                 <View style={styles.socialContainer}>
-                    <TouchableOpacity style={styles.socialButton} activeOpacity={0.7}>
+                    <TouchableOpacity style={styles.socialButton} activeOpacity={0.7} onPress={handleFacebookLogin}>
                         <Image
                             source={ICONS.facebook}
                             style={styles.socialIcon}
                             resizeMode="contain"
                         />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.socialButton} activeOpacity={0.7}>
+                    <TouchableOpacity style={styles.socialButton} activeOpacity={0.7} onPress={handleGoogleLogin}>
                         <Image
                             source={ICONS.google}
                             style={styles.socialIcon}

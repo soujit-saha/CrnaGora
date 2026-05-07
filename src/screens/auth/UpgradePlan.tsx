@@ -104,11 +104,13 @@ const UpgradePlan = ({ navigation }: any) => {
                 }
             } else {
                 dispatch(confirmPaymentRequest({
-                    "payment_intent_id": data?.data?.intent_id,
-                    "payment_status": "succeeded",
-                    // "card_last4": "string",
-                    // "card_brand": "string",
-                    // "error_message": "string"
+                    body: {
+                        "payment_intent_id": data?.data?.intent_id,
+                        "payment_status": "succeeded",
+                        // "card_last4": "string",
+                        // "card_brand": "string",
+                        // "error_message": "string"
+                    }, type: 1
                 }))
                 setLoading(false)
                 // Alert.alert('Success', 'Your payment is confirmed!');
@@ -142,7 +144,7 @@ const UpgradePlan = ({ navigation }: any) => {
 
     return (
         <SafeAreaView style={styles.container}>
-            <Loader visible={isReqLoading || isMainLoading || loading} />
+            <Loader visible={isReqLoading || isMainLoading} />
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
             <LinearGradient
                 colors={['rgba(254, 163, 224, 0.2)', '#FAFAFA']}

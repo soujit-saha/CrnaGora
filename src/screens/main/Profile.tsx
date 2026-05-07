@@ -139,9 +139,8 @@ const Profile = () => {
               style={styles.avatarImage}
             />
             <View style={styles.identityDetails}>
-              <Text style={styles.identityName}>{getProfileRes?.data?.name}, {getProfileRes?.data?.age}</Text>
-              <Text style={styles.identityPlan}>{getProfileRes?.data?.
-                subscription?.plan_name}</Text>
+              <Text style={styles.identityName}>{getProfileRes?.data?.name}, {getProfileRes?.data?.age ? getProfileRes?.data?.age : "--"}</Text>
+              <Text style={styles.identityPlan}>{getProfileRes?.data?.subscription?.plan_name ? getProfileRes?.data?.subscription?.plan_name : "Free Plan"}</Text>
             </View>
             <View hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} >
               <Image source={ICONS.vectorPinkNext} style={styles.nextArrow} resizeMode="contain" />

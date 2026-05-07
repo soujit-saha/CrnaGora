@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "660803418047",
+    "project_id": "crnagora-4e5bf",
+    "storage_bucket": "crnagora-4e5bf.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:660803418047:android:726cdbf8f9b0fdf220130a",
+        "android_client_info": {
+          "package_name": "com.crnagora"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAzLiJ0srrjLJtORizE6PTrVHvXVGb48BA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

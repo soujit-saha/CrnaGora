@@ -88,11 +88,11 @@ export function* createPaymentIntentSaga(
     action: PayloadAction<any>,
 ): Generator<any, void, any> {
     const item = yield select(getItems);
-    console.log("item", item.verifyOTPRes?.token)
+    console.log("item", item.storeTempTokenRes)
     const header: ApiHeaders = {
         Accept: 'application/json',
         contenttype: 'application/json',
-        accesstoken: item.verifyOTPRes?.token,
+        accesstoken: item.storeTempTokenRes,
     };
     try {
         const response: ApiResponse = yield call(
@@ -119,26 +119,27 @@ export function* confirmPaymentSaga(
     const header: ApiHeaders = {
         Accept: 'application/json',
         contenttype: 'application/json',
-        accesstoken: item?.getTokenResponse || item.verifyOTPRes?.token,
+        accesstoken: item?.getTokenResponse || item.storeTempTokenRes,
     };
     try {
         const response: ApiResponse = yield call(
             postApi,
             'confirm-payment',
-            action.payload,
+            action.payload.body,
             header,
         );
 
         console.log("confirm-payment res", response)
         yield put(confirmPaymentSuccess(response?.data));
         ToastAlert(response?.data?.message || 'Your payment is confirmed!');
-
-        yield call(
-            AsyncStorage.setItem,
-            constants.TOKEN,
-            JSON.stringify(item.verifyOTPRes?.token),
-        );
-        yield put(getTokenSuccess(item.verifyOTPRes?.token || null));
+        if (action.payload.type === 1) {
+            yield call(
+                AsyncStorage.setItem,
+                constants.TOKEN,
+                JSON.stringify(item.storeTempTokenRes),
+            );
+            yield put(getTokenSuccess(item.storeTempTokenRes || null));
+        }
         // navigate("UpgradePlan")
 
     } catch (error: any) {
@@ -317,7 +318,7 @@ export function* createStatusSaga(action: PayloadAction<any>): Generator<any, vo
     } catch (error: any) {
         console.log("createStatusSaga Error", error)
         yield put(createStatusFailure(error));
-        ToastAlert(error?.response?.data?.message || 'createStatus Failed');
+        // ToastAlert(error?.response?.data?.message || 'createStatus Failed');
     }
 }
 
@@ -425,7 +426,7 @@ export function* chatListSaga(
         accesstoken: item.getTokenResponse,
     };
     try {
-        const response: ApiResponse = yield call(getApi, 'chats', header);
+        const response: ApiResponse = yield call(postApi, 'chats', action.payload, header);
         console.log('chatList res', response);
         yield put(chatListSuccess(response?.data));
     } catch (error: any) {

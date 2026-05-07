@@ -81,7 +81,7 @@ export function* socialAuthSaga(
   try {
     const response: ApiResponse = yield call(
       postApi,
-      'social/login',
+      'social-login',
       action.payload,
       header,
     );
@@ -89,8 +89,9 @@ export function* socialAuthSaga(
     yield put(socialAuthSuccess(response?.data));
     yield put(storeTempToken(response?.data?.data?.token));
 
-    if (response?.data?.data?.user?.display_name == null) {
-      navigate('AgreeTerms');
+    if (response?.data?.data?.user?.dob == null) {
+      navigate('ProfileDetails');
+      console.log('08765432');
     } else {
       yield call(
         AsyncStorage.setItem,
@@ -98,8 +99,9 @@ export function* socialAuthSaga(
         JSON.stringify(response?.data?.data?.token),
       );
       yield put(getTokenSuccess(response?.data?.data?.token || null));
-      // yield put(loginSuccess(response?.data?.data?.token));
+      yield put(socialAuthSuccess(response?.data));
       ToastAlert('Login Successful');
+      console.log('123456789');
     }
   } catch (error: any) {
     console.log(error);
@@ -116,7 +118,7 @@ export function* plansSaga(
   const header: ApiHeaders = {
     Accept: 'application/json',
     contenttype: 'application/json',
-    accesstoken: item.getTokenResponse || item.verifyOTPRes?.token,
+    accesstoken: item.getTokenResponse || item.storeTempTokenRes,
 
   };
   try {
@@ -265,9 +267,10 @@ export function* verifyOTPSaga(
 
     // console.log("response", response)
     yield put(verifyOTPSuccess(response?.data?.data));
+    yield put(storeTempToken(response?.data?.data?.token));
     // navigate('Otp', action.payload)
 
-    if (response?.data?.data?.user?.name == null) {
+    if (response?.data?.data?.user?.dob == null) {
       navigate('ProfileDetails');
     } else {
       yield call(
@@ -292,11 +295,12 @@ export function* profileSetUpSaga(
   action: PayloadAction<any>,
 ): Generator<any, void, any> {
   const item = yield select(getItems);
-  console.log('153', item.verifyOTPRes?.token);
+  // console.log('153', item.storeTempTokenRes);
+  // console.log('299', item.storeTempTokenRes);
   const header: ApiHeaders = {
     Accept: 'application/json',
     contenttype: 'multipart/form-data',
-    accesstoken: item.verifyOTPRes?.token,
+    accesstoken: item.storeTempTokenRes,
   };
   try {
     const data = action.payload;
@@ -325,13 +329,13 @@ export function* profileSetUpSaga(
     });
 
     // Profile image
-    // if (data.profile_image?.uri) {
-    //   formData.append('profile_image', {
-    //     uri: data.profile_image.uri,
-    //     name: data.profile_image.name ?? 'profile_image.jpg',
-    //     type: data.profile_image.type ?? 'image/jpeg',
-    //   } as any);
-    // }
+    if (data.profile_image?.uri) {
+      formData.append('profile_image', {
+        uri: data.profile_image.uri,
+        name: data.profile_image.name ?? 'profile_image.jpg',
+        type: data.profile_image.type ?? 'image/jpeg',
+      } as any);
+    }
 
     // Gallery images
     // (data.gallary ?? data.gallery ?? []).forEach(
@@ -373,11 +377,11 @@ export function* notificationSetUpSaga(
   action: PayloadAction<any>,
 ): Generator<any, void, any> {
   const item = yield select(getItems);
-  console.log('153', item.verifyOTPRes?.token);
+  // console.log('153', item.storeTempTokenRes);
   const header: ApiHeaders = {
     Accept: 'application/json',
     contenttype: 'multipart/form-data',
-    accesstoken: item.getTokenResponse || item.verifyOTPRes?.token,
+    accesstoken: item.getTokenResponse || item.storeTempTokenRes,
   };
   try {
     const data = action.payload;
@@ -427,14 +431,14 @@ export function* saveTokenToLoginSaga(
   action: PayloadAction<LogoutPayload>,
 ): Generator<any, void, any> {
   const item = yield select(getItems);
-  console.log('153', item.verifyOTPRes?.token);
+  // console.log('153', item.storeTempTokenRes);
   try {
     yield call(
       AsyncStorage.setItem,
       constants.TOKEN,
-      JSON.stringify(item.verifyOTPRes?.token),
+      JSON.stringify(item.storeTempTokenRes),
     );
-    yield put(getTokenSuccess(item.verifyOTPRes?.token || null));
+    yield put(getTokenSuccess(item.storeTempTokenRes || null));
 
   } catch (error: any) {
     console.log(error);

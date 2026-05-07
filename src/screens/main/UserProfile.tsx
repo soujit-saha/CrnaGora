@@ -127,7 +127,7 @@ const UserProfile = ({ route }: any) => {
         <View style={styles.profileHeaderRow}>
           <View>
             <Text style={styles.nameText}>{getPeopleDetailsRes?.data?.name}, 23</Text>
-            <Text style={styles.professionText}>Professional model</Text>
+            <Text style={styles.professionText}>{getPeopleDetailsRes?.data?.profession}</Text>
           </View>
           <TouchableOpacity style={styles.sendBtn}>
             <Image
@@ -142,39 +142,39 @@ const UserProfile = ({ route }: any) => {
         <View style={styles.sectionTitleRow}>
           <View>
             <Text style={styles.sectionTitle}>Location</Text>
-            <Text style={styles.sectionSubtext}>Chicago, IL United States</Text>
+            <Text style={styles.sectionSubtext}>{getPeopleDetailsRes?.data?.location}</Text>
           </View>
-          <TouchableOpacity style={styles.locationBadge}>
+          {/* <TouchableOpacity style={styles.locationBadge}>
             <Image source={ICONS.location} style={styles.locationPin} resizeMode="contain" />
             <Text style={styles.locationBadgeText}>1 km</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
 
         {/* About Section */}
-        <View style={styles.sectionSpacing}>
+        {/* <View style={styles.sectionSpacing}>
           <Text style={styles.sectionTitleBase}>About</Text>
           <Text style={styles.aboutText}>
             My name is Jessica Parker and I enjoy meeting new people and finding ways
             to help them have an uplifting experience. I enjoy reading..{' '}
             <Text style={styles.readMoreText}>Read more</Text>
           </Text>
-        </View>
+        </View> */}
 
         {/* Interests */}
         <View style={styles.sectionSpacing}>
           <Text style={styles.sectionTitleBase}>Interests</Text>
           <View style={styles.interestsQueue}>
-            {INTERESTS.map((interest) => (
+            {getPeopleDetailsRes?.data?.hobbies?.map((interest: any, index: number) => (
               <View
-                key={interest.id}
+                key={index}
                 style={[
                   styles.chip,
                   interest.selected ? styles.chipSelected : styles.chipUnselected,
                 ]}
               >
-                {interest.selected && (
+                {/* {interest.selected && (
                   <Image source={ICONS.done} style={styles.chipIcon} resizeMode="contain" />
-                )}
+                )} */}
                 <Text
                   style={
                     interest.selected
@@ -193,12 +193,14 @@ const UserProfile = ({ route }: any) => {
         <View style={styles.galleryContainer}>
           <View style={styles.galleryHeaderRow}>
             <Text style={styles.sectionTitleBase}>Gallery</Text>
-            <TouchableOpacity onPress={() => navigate('Gallery')}>
+            <TouchableOpacity
+            //  onPress={() => navigate('Gallery')}
+            >
               <Text style={styles.seeAllText}>See all</Text>
             </TouchableOpacity>
           </View>
 
-          <View style={styles.galleryRow2}>
+          {/* <View style={styles.galleryRow2}>
             <Image source={{ uri: GALLERY[0] }} style={styles.galleryImgLarge} />
             <Image source={{ uri: GALLERY[1] }} style={styles.galleryImgLarge} />
           </View>
@@ -207,7 +209,7 @@ const UserProfile = ({ route }: any) => {
             <Image source={{ uri: GALLERY[2] }} style={styles.galleryImgSmall} />
             <Image source={{ uri: GALLERY[3] }} style={styles.galleryImgSmall} />
             <Image source={{ uri: GALLERY[4] }} style={styles.galleryImgSmall} />
-          </View>
+          </View> */}
         </View>
       </View>
     </ScrollView>

@@ -91,7 +91,7 @@ const Passions = ({ route }: any) => {
 
             let data = {
                 name: route?.params?.name,
-                profile_image: route?.params?.gallery,
+                profile_image: route?.params?.profile_image,
                 dob: route?.params?.dob,
                 profession: route?.params?.profession,
                 gender: route?.params?.gender == 'Man' ? 1 : route?.params?.gender == 'Woman' ? 2 : 3,

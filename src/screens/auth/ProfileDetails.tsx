@@ -77,7 +77,9 @@ const ProfileDetails = ({ navigation, route }: any) => {
             dob: moment(date).format('YYYY-MM-DD'),
             profession: profession.trim(),
             location: location.trim(),
-            gallery: profileImage,
+            profile_image: profileImage,
+            lat: selectedLocationLatLng?.lat,
+            lng: selectedLocationLatLng?.lng,
             ...(route?.params || {})
         };
 
