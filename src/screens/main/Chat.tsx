@@ -11,9 +11,12 @@ import {
     Platform,
     ActivityIndicator,
     Alert,
+    PermissionsAndroid,
 } from 'react-native';
+import Sound from 'react-native-nitro-sound';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
+import Video from 'react-native-video';
 import { COLORS, FONTS, ICONS } from '../../utils/constants';
 import { ms, mvs } from '../../utils/helper/metric';
 import normalize from '../../utils/helper/normalize';
@@ -47,6 +50,149 @@ const Chat = ({ route }: any) => {
     const [showMenu, setShowMenu] = useState(false);
     const [chatId, setChatId] = useState(initialChatId);
     const [isSending, setIsSending] = useState(false);
+
+    // Audio recording state
+    const [isRecording, setIsRecording] = useState(false);
+    const [isRecordingPaused, setIsRecordingPaused] = useState(false);
+    const [recordTime, setRecordTime] = useState('0:00');
+    const [audioPath, setAudioPath] = useState<string | null>(null);
+
+    // Audio playback state
+    const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+
+    useEffect(() => {
+        return () => {
+            try {
+                Sound.stopPlayer();
+                Sound.removePlaybackEndListener();
+            } catch (e) {}
+        };
+    }, []);
+
+    const handleToggleAudio = useCallback(async (msgId: string, url: string) => {
+        try {
+            if (playingAudioId === msgId) {
+                await Sound.pausePlayer();
+                setPlayingAudioId(null);
+            } else {
+                if (playingAudioId) {
+                    await Sound.stopPlayer();
+                    Sound.removePlaybackEndListener();
+                }
+                await Sound.startPlayer(url);
+                setPlayingAudioId(msgId);
+                Sound.addPlaybackEndListener(() => {
+                    setPlayingAudioId(null);
+                    Sound.removePlaybackEndListener();
+                });
+            }
+        } catch (error) {
+            console.error('Audio playback error:', error);
+            setPlayingAudioId(null);
+        }
+    }, [playingAudioId]);
+
+    const requestMicrophonePermission = async () => {
+        if (Platform.OS === 'android') {
+            try {
+                const granted = await PermissionsAndroid.request(
+                    PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+                    {
+                        title: 'Microphone Permission',
+                        message: 'App needs access to your microphone to record audio.',
+                        buttonNeutral: 'Ask Me Later',
+                        buttonNegative: 'Cancel',
+                        buttonPositive: 'OK',
+                    },
+                );
+                return granted === PermissionsAndroid.RESULTS.GRANTED;
+            } catch (err) {
+                console.warn(err);
+                return false;
+            }
+        }
+        return true;
+    };
+
+    const handleStartRecording = async () => {
+        const hasPermission = await requestMicrophonePermission();
+        if (!hasPermission) return;
+        try {
+            const result = await Sound.startRecorder();
+            Sound.addRecordBackListener((e: any) => {
+                setRecordTime(Sound.mmssss(Math.floor(e.currentPosition)));
+            });
+            setAudioPath(result);
+            setIsRecording(true);
+            setIsRecordingPaused(false);
+        } catch (error) {
+            console.error('Failed to start recording:', error);
+        }
+    };
+
+    const handleStopRecording = async () => {
+        try {
+            const result = await Sound.stopRecorder();
+            Sound.removeRecordBackListener();
+            setIsRecordingPaused(true);
+            setAudioPath(result);
+        } catch (error) {
+            console.error('Failed to stop recording:', error);
+        }
+    };
+
+    const handleCancelRecording = async () => {
+        if (!isRecordingPaused) {
+            try { await Sound.stopRecorder(); Sound.removeRecordBackListener(); } catch (err) { }
+        }
+        setIsRecording(false);
+        setIsRecordingPaused(false);
+        setRecordTime('0:00');
+        setAudioPath(null);
+    };
+
+    const handleSendRecording = async () => {
+        let finalPath = audioPath;
+        if (!isRecordingPaused) {
+            try {
+                finalPath = await Sound.stopRecorder();
+                Sound.removeRecordBackListener();
+            } catch (err) { }
+        }
+
+        setIsRecording(false);
+        setIsRecordingPaused(false);
+        setRecordTime('0:00');
+        setAudioPath(null);
+
+        if (finalPath && chatId) {
+            const uri = Platform.OS === 'android' && !finalPath.startsWith('file://') ? `file://${finalPath}` : finalPath;
+            const optimisticMsg = {
+                id: `temp_${Date.now()}`,
+                chat_id: chatId,
+                sender_id: currentUserId,
+                type: 'recorded_audio',
+                message: '',
+                attachment: uri,
+                created_at: new Date().toISOString(),
+                sender: {
+                    id: currentUserId,
+                    name: 'You',
+                },
+            };
+            dispatch(appendNewMessage(optimisticMsg));
+
+            dispatch(sendMessageRequest({
+                chatId,
+                type: 'recorded_audio',
+                attachment: {
+                    uri: uri,
+                    name: `audio_${Date.now()}.mp4`,
+                    type: 'audio/mp4',
+                },
+            }));
+        }
+    };
 
     const flatListRef = useRef<FlatList>(null);
     const dispatch = useDispatch();
@@ -299,15 +445,28 @@ const Chat = ({ route }: any) => {
                 );
             } else if (msg.type === 'video') {
                 attachmentEl = (
-                    <View style={styles.videoPlaceholder}>
-                        <Text style={styles.videoText}>🎬 Video</Text>
+                    <View style={styles.videoPlayerContainer}>
+                        <Video
+                            source={{ uri: attachUrl }}
+                            style={styles.videoPlayer}
+                            controls={true}
+                            resizeMode="contain"
+                            paused={true}
+                        />
                     </View>
                 );
             } else if (msg.type === 'audio' || msg.type === 'recorded_audio') {
+                const isPlaying = playingAudioId === msg.id;
                 attachmentEl = (
-                    <View style={styles.audioPlaceholder}>
-                        <Text style={styles.audioText}>🎵 Audio Message</Text>
-                    </View>
+                    <TouchableOpacity 
+                        style={styles.audioActionBtn} 
+                        onPress={() => handleToggleAudio(msg.id, attachUrl)}
+                    >
+                        <Text style={styles.audioActionIcon}>{isPlaying ? '⏸️' : '▶️'}</Text>
+                        <Text style={styles.audioActionText}>
+                            {isPlaying ? 'Playing...' : 'Play Audio'}
+                        </Text>
+                    </TouchableOpacity>
                 );
             }
         }
@@ -355,7 +514,7 @@ const Chat = ({ route }: any) => {
                 </View>
             </View>
         );
-    }, [currentUserId, messages]);
+    }, [currentUserId, messages, playingAudioId, handleToggleAudio]);
 
     const displayName = userName || 'Chat';
     const displayImage = userImage || 'https://via.placeholder.com/100';
@@ -385,7 +544,8 @@ const Chat = ({ route }: any) => {
                     </LinearGradient>
                     <View style={styles.headerTitles}>
                         <Text style={styles.headerName}>{displayName}</Text>
-                        <Text style={styles.headerStatus}>Online</Text>
+                        {/* <Text style={styles.headerStatus}>Online</Text> */}
+
                     </View>
                 </View>
 
@@ -457,39 +617,63 @@ const Chat = ({ route }: any) => {
                     )}
 
                     {/* Input Area */}
-                    <View style={styles.inputContainer}>
-                        {/* Attachment buttons */}
-                        {/* <TouchableOpacity style={styles.attachBtn} onPress={handleSendImage}>
+                    {isRecording ? (
+                        <View style={styles.recordingWrapper}>
+                            <View style={styles.recordingTopRow}>
+                                <Text style={styles.recordingTimeText}>{recordTime}</Text>
+                                <View style={styles.waveformContainer}>
+                                    {[...Array(25)].map((_, i) => (
+                                        <View key={i} style={[styles.waveBar, { height: Math.max(4, Math.random() * 24) }]} />
+                                    ))}
+                                </View>
+                            </View>
+                            <View style={styles.recordingBottomRow}>
+                                <TouchableOpacity onPress={handleCancelRecording} style={styles.recordingActionBtn}>
+                                    <Image source={ICONS.delete} style={styles.recordingActionIcon} resizeMode="contain" />
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={isRecordingPaused ? handleStartRecording : handleStopRecording} style={styles.recordingActionBtn}>
+                                    <Text style={{ fontSize: normalize(20), color: '#FF6B6B' }}>{isRecordingPaused ? '▶️' : '⏹️'}</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={handleSendRecording} style={styles.sendRecordingBtn}>
+                                    <Image source={ICONS.send} style={{ ...styles.sendIcon, tintColor: COLORS.white }} resizeMode="contain" />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    ) : (
+                        <View style={styles.inputContainer}>
+                            {/* Attachment buttons */}
+                            {/* <TouchableOpacity style={styles.attachBtn} onPress={handleSendImage}>
                             <Text style={{ fontSize: normalize(18) }}>📷</Text>
                         </TouchableOpacity> */}
 
-                        <View style={styles.textInputWrapper}>
-                            <TextInput
-                                style={styles.textInput}
-                                placeholder="Your message"
-                                placeholderTextColor={COLORS.textTertiary}
-                                value={message}
-                                onChangeText={setMessage}
-                                multiline={false}
-                                returnKeyType="send"
-                                onSubmitEditing={handleSendMessage}
-                            />
-                            <TouchableOpacity style={styles.stickerBtn} onPress={handleSendImage}>
-                                <Image source={ICONS.stickers} style={styles.stickerIcon} resizeMode="contain" />
-                            </TouchableOpacity>
+                            <View style={styles.textInputWrapper}>
+                                <TextInput
+                                    style={styles.textInput}
+                                    placeholder="Your message"
+                                    placeholderTextColor={COLORS.textTertiary}
+                                    value={message}
+                                    onChangeText={setMessage}
+                                    multiline={false}
+                                    returnKeyType="send"
+                                    onSubmitEditing={handleSendMessage}
+                                />
+                                <TouchableOpacity style={styles.stickerBtn} onPress={handleSendImage}>
+                                    <Image source={ICONS.stickers} style={styles.stickerIcon} resizeMode="contain" />
+                                </TouchableOpacity>
+                            </View>
+
+                            {message.trim() ? (
+                                <TouchableOpacity style={styles.sendBtn} onPress={handleSendMessage}>
+                                    <Image source={ICONS.send} style={{ ...styles.sendIcon, tintColor: COLORS.white }} resizeMode="contain" />
+                                </TouchableOpacity>
+                            ) : (
+                                <TouchableOpacity style={styles.micBtn} onPress={handleStartRecording}>
+                                    <Image source={ICONS.karaoke} style={styles.sendIcon} resizeMode="contain" />
+
+                                </TouchableOpacity>
+                            )}
                         </View>
-
-                        {message.trim() ? (
-                            <TouchableOpacity style={styles.sendBtn} onPress={handleSendMessage}>
-                                <Image source={ICONS.send} style={{ ...styles.sendIcon, tintColor: COLORS.white }} resizeMode="contain" />
-                            </TouchableOpacity>
-                        ) : (
-                            <TouchableOpacity style={styles.micBtn}>
-                                <Image source={ICONS.karaoke} style={styles.sendIcon} resizeMode="contain" />
-
-                            </TouchableOpacity>
-                        )}
-                    </View>
+                    )}
                 </View>
             </KeyboardAvoidingView>
         </SafeAreaView>
@@ -701,28 +885,33 @@ const styles = StyleSheet.create({
         borderRadius: ms(12),
         marginBottom: mvs(5),
     },
-    videoPlaceholder: {
+    videoPlayerContainer: {
         width: ms(200),
-        height: ms(120),
+        height: ms(200),
         borderRadius: ms(12),
-        backgroundColor: '#E0E0E0',
-        justifyContent: 'center',
-        alignItems: 'center',
+        backgroundColor: '#000',
+        overflow: 'hidden',
         marginBottom: mvs(5),
     },
-    videoText: {
-        fontFamily: FONTS.medium,
-        fontSize: normalize(14),
-        color: COLORS.textTertiary,
+    videoPlayer: {
+        width: '100%',
+        height: '100%',
     },
-    audioPlaceholder: {
-        paddingVertical: mvs(8),
-        paddingHorizontal: ms(12),
+    audioActionBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: mvs(10),
+        paddingHorizontal: ms(15),
         borderRadius: ms(8),
         backgroundColor: '#E8F5E9',
         marginBottom: mvs(5),
+        minWidth: ms(140),
     },
-    audioText: {
+    audioActionIcon: {
+        fontSize: normalize(16),
+        marginRight: ms(8),
+    },
+    audioActionText: {
         fontFamily: FONTS.medium,
         fontSize: normalize(12),
         color: COLORS.black,
@@ -805,6 +994,66 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
         shadowRadius: 5,
+    },
+    recordingWrapper: {
+        paddingHorizontal: ms(20),
+        paddingBottom: mvs(20),
+        paddingTop: mvs(15),
+        backgroundColor: '#1C1C1C',
+        borderTopLeftRadius: ms(20),
+        borderTopRightRadius: ms(20),
+        zIndex: 1,
+    },
+    recordingTopRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: mvs(20),
+        paddingHorizontal: ms(10),
+    },
+    recordingTimeText: {
+        color: COLORS.white,
+        fontFamily: FONTS.medium,
+        fontSize: normalize(16),
+        width: ms(50),
+    },
+    waveformContainer: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: mvs(30),
+        marginHorizontal: ms(10),
+    },
+    waveBar: {
+        width: ms(3),
+        backgroundColor: '#A0AAB5',
+        marginHorizontal: ms(2),
+        borderRadius: ms(1.5),
+    },
+    recordingBottomRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: ms(10),
+    },
+    recordingActionBtn: {
+        padding: ms(10),
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    recordingActionIcon: {
+        width: ms(24),
+        height: ms(24),
+        tintColor: '#A0AAB5',
+    },
+    sendRecordingBtn: {
+        width: ms(50),
+        height: ms(50),
+        borderRadius: ms(25),
+        backgroundColor: '#25D366',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 
     /* Options Menu Styling */
