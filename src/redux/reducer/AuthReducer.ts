@@ -13,6 +13,7 @@ export interface AuthState {
   safetyPolicyRes: {};
   storeProfileSetupDataRes?: {};
   profileSetUpRes?: {};
+  profileUpdateRes?: {};
   usernameCheckRes?: {};
   masterDataRes?: {};
   hobbiesRes?: [];
@@ -42,6 +43,7 @@ const initialState: AuthState = {
   safetyPolicyRes: {},
   storeProfileSetupDataRes: {},
   profileSetUpRes: {},
+  profileUpdateRes: {},
   usernameCheckRes: {},
   masterDataRes: {},
   hobbiesRes: [],
@@ -124,6 +126,22 @@ const AuthSlice = createSlice({
     profileSetUpFailure(state, action: PayloadAction<any>) {
       state.isReqLoading = false;
       state.error = action.payload?.error || 'profileSetUp failed';
+      state.status = action.type;
+    },
+
+    //Profile Update
+    profileUpdateRequest(state, action: PayloadAction<any>) {
+      state.isReqLoading = true;
+      state.status = action.type;
+    },
+    profileUpdateSuccess(state, action: PayloadAction<any>) {
+      state.isReqLoading = false;
+      state.profileUpdateRes = action.payload;
+      state.status = action.type;
+    },
+    profileUpdateFailure(state, action: PayloadAction<any>) {
+      state.isReqLoading = false;
+      state.error = action.payload?.error || 'profileUpdate failed';
       state.status = action.type;
     },
 
@@ -272,6 +290,10 @@ export const {
   profileSetUpRequest,
   profileSetUpSuccess,
   profileSetUpFailure,
+
+  profileUpdateRequest,
+  profileUpdateSuccess,
+  profileUpdateFailure,
 
   socialAuthRequest,
   socialAuthSuccess,

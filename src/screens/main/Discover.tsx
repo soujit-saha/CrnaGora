@@ -99,10 +99,12 @@ const DATA = [
 
 const Discover = () => {
     const dispatch = useDispatch();
+
     const [interestedIn, setInterestedIn] = useState('');
     const { isReqLoading, masterdropdownRes } = useSelector((state: any) => state.AuthReducer);
-    const { isMainLoading, peopleListRes, swipeRes, startChatRes, status } = useSelector((state: any) => state.MainReducer);
+    const { isMainLoading, peopleListRes, swipeRes, startChatRes, status, getProfileRes } = useSelector((state: any) => state.MainReducer);
     const [isStartingChat, setIsStartingChat] = useState(false);
+    const [chatTargetUser, setChatTargetUser] = useState<any>(null);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isMatchModalVisible, setIsMatchModalVisible] = useState(false);
     const [isFilterVisible, setIsFilterVisible] = useState(false);
@@ -177,8 +179,8 @@ const Discover = () => {
                     getCurrentLocation(false);
                 } else {
                     let errorMsg = 'Location Error';
-                    if (error.code === 1) errorMsg = 'Permission Denied';
-                    else if (error.code === 2) errorMsg = 'Position Unavailable';
+                    if (error.code === 1) errorMsg = 'Please Enable Location Permission';
+                    else if (error.code === 2) errorMsg = 'Please Enable Location';
                     else if (error.code === 3) errorMsg = 'Location Timeout';
                     setCurrentAddress(errorMsg);
                 }
@@ -410,18 +412,18 @@ const Discover = () => {
 
                                 {/* Top Left Distance Chip */}
                                 <View style={styles.locationBadge}>
-                                    {/* <Text style={styles.locationIcon}>📍</Text> */}
                                     <Image source={ICONS.location} style={styles.locationIcon} />
-                                    <Text style={styles.locationText}>{item.distance}</Text>
+                                    <Text style={styles.locationText}>{item.location}</Text>
+                                    {/* <Text style={styles.locationText}>{item.distance}</Text> */}
                                 </View>
 
                                 {/* Right Align Dots Scrollbar */}
                                 <View style={styles.dotsContainer}>
                                     <View style={[styles.dot, styles.dotActive]} />
+                                    {/* <View style={styles.dot} />
                                     <View style={styles.dot} />
                                     <View style={styles.dot} />
-                                    <View style={styles.dot} />
-                                    <View style={styles.dot} />
+                                    <View style={styles.dot} /> */}
                                 </View>
                             </TouchableOpacity>
                         </Animated.View>
@@ -518,17 +520,20 @@ const Discover = () => {
     useEffect(() => {
         if (status === 'Main/startChatSuccess' && startChatRes && isStartingChat) {
             setIsStartingChat(false);
-            const currentUser = peopleListRes?.[currentIndex];
-            if (currentUser) {
+            const userToChat = chatTargetUser || peopleListRes?.[currentIndex];
+            if (userToChat) {
                 navigate('Chat', {
-                    chatId: startChatRes.data?.id,
-                    userId: currentUser.id,
-                    userName: currentUser.name,
-                    userImage: currentUser.profile_image || currentUser.image_path || 'https://via.placeholder.com/100',
+                    chatId: startChatRes.data?.id || startChatRes?.id,
+                    userId: userToChat.id,
+                    userName: userToChat.name,
+                    userImage: userToChat.profile_image || userToChat.image_path || 'https://via.placeholder.com/100',
                 });
+                setChatTargetUser(null);
             }
         }
-    }, [status, startChatRes, isStartingChat, currentIndex, peopleListRes]);
+    }, [status, startChatRes, isStartingChat, currentIndex, peopleListRes, chatTargetUser]);
+
+
 
     return (
         <SafeAreaView style={styles.container}>
@@ -549,13 +554,17 @@ const Discover = () => {
             >
                 {/* Custom Discover Header */}
                 <View style={styles.header}>
-                    <TouchableOpacity style={styles.headerBtn}>
+                    {/* <TouchableOpacity style={styles.headerBtn}>
                         <Image
                             source={ICONS.back}
                             style={styles.backIcon}
                             resizeMode="contain"
                         />
-                    </TouchableOpacity>
+                    </TouchableOpacity> */}
+                    <View style={{
+                        width: ms(48),
+                        height: ms(48),
+                    }} />
 
                     <View style={styles.headerCenter}>
                         <Text style={styles.headerTitle}>Discover</Text>
@@ -589,10 +598,11 @@ const Discover = () => {
                     <TouchableOpacity
                         style={{ ...styles.floatBtnSmall, backgroundColor: COLORS.primaryLight }}
                         onPress={() => {
-                            const currentUserId = peopleListRes?.[currentIndex]?.id;
-                            if (currentUserId) {
+                            const currentUser = peopleListRes?.[currentIndex];
+                            if (currentUser?.id) {
+                                setChatTargetUser(currentUser);
                                 setIsStartingChat(true);
-                                dispatch(startChatRequest({ user_ids: [currentUserId] }));
+                                dispatch(startChatRequest({ user_ids: [currentUser.id] }));
                             }
                         }}
                     >
@@ -635,12 +645,13 @@ const Discover = () => {
                     <View style={styles.matchImagesWrapper}>
                         {/* Underlay Guy Image (Jake) */}
                         <Image
-                            source={{ uri: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80' }}
+                            source={{ uri: getProfileRes?.data?.profile_image }}
                             style={[styles.matchImageItem, styles.matchImageRight]}
                         />
+
                         {/* Overlay Girl Image */}
                         <Image
-                            source={DATA[currentIndex] ? { uri: DATA[currentIndex].image } : { uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb' }}
+                            source={peopleListRes?.[currentIndex - 1]?.profile_image ? { uri: peopleListRes?.[currentIndex - 1]?.profile_image } : { uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb' }}
                             style={[styles.matchImageItem, styles.matchImageLeft]}
                         />
 
@@ -656,7 +667,7 @@ const Discover = () => {
                         </View>
                     </View>
 
-                    <Text style={styles.matchTitle}>It's a match, Jake!</Text>
+                    <Text style={styles.matchTitle}>It's a match, {getProfileRes?.data?.name}</Text>
                     <Text style={styles.matchSubtitle}>Start a conversation now with each other</Text>
 
                     <View style={styles.matchActionContainer}>
@@ -664,7 +675,12 @@ const Discover = () => {
                             style={styles.matchBtnPink}
                             onPress={() => {
                                 setIsMatchModalVisible(false);
-                                navigate('Chat'); // Hop into Chat flow immediately
+                                const matchedUser = peopleListRes?.[currentIndex - 1];
+                                if (matchedUser?.id) {
+                                    setChatTargetUser(matchedUser);
+                                    setIsStartingChat(true);
+                                    dispatch(startChatRequest({ user_ids: [matchedUser.id] }));
+                                }
                             }}
                         >
                             <Text style={styles.matchBtnPinkText}>Say hello</Text>
@@ -951,7 +967,7 @@ const styles = StyleSheet.create({
     },
     dotActive: {
         backgroundColor: COLORS.white,
-        height: ms(12),
+        height: ms(52),
     },
     dragOverlayIcon: {
         position: 'absolute',
@@ -1137,6 +1153,8 @@ const styles = StyleSheet.create({
         color: '#ff4da6',
         marginTop: mvs(30),
         marginBottom: mvs(10),
+        marginHorizontal: mvs(25)
+
     },
     matchSubtitle: {
         fontFamily: FONTS.regular,

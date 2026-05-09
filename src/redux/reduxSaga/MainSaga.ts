@@ -35,6 +35,10 @@ import {
     startChatSuccess, startChatFailure,
     sendMessageSuccess, sendMessageFailure,
     markAsReadSuccess, markAsReadFailure,
+    archiveChatSuccess, archiveChatFailure,
+    muteChatSuccess, muteChatFailure,
+    favoriteChatSuccess, favoriteChatFailure,
+    unmatchUserSuccess, unmatchUserFailure,
 } from '../reducer/MainReducer';
 // import { getApi, postApi } from '../../utils/helper/ApiRequest';
 import { ApiHeaders, ApiResponse } from '../types';
@@ -55,7 +59,7 @@ export function* peopleListSaga(
     action: PayloadAction<any>,
 ): Generator<any, void, any> {
     const item = yield select(getItems);
-    console.log("item", item.getTokenResponse)
+    // console.log("item", item.getTokenResponse)
     const header: ApiHeaders = {
         Accept: 'application/json',
         contenttype: 'application/json',
@@ -268,14 +272,21 @@ export function* matchesBlockSaga(
     try {
         const response: ApiResponse = yield call(
             postApi,
-            'matches/block/' + action.payload,
+            'matches/block/' + action.payload.id,
             {},
             header,
         );
 
         console.log("matches/block res", response)
-        yield put(matchesBlockSuccess(response?.data));
-        yield put(matchesListRequest({}));
+        if (action.payload.type === 1) {
+            yield put(matchesBlockSuccess(response?.data));
+            yield put(matchesListRequest({}));
+
+        } else {
+            yield put(matchesBlockSuccess(response?.data));
+            goBack()
+        }
+
 
     } catch (error: any) {
         console.log(error);
@@ -469,7 +480,7 @@ export function* startChatSaga(
     try {
         const response: ApiResponse = yield call(
             postApi,
-            'chats',
+            'chats/store',
             action.payload,
             header,
         );
@@ -553,6 +564,62 @@ export function* markAsReadSaga(
     }
 }
 
+export function* archiveChatSaga(action: PayloadAction<any>): Generator<any, void, any> {
+    const item = yield select(getItems);
+    const header: ApiHeaders = { Accept: 'application/json', contenttype: 'application/json', accesstoken: item.getTokenResponse };
+    try {
+        const chatId = action.payload?.chatId || action.payload?.chat || action.payload;
+        const response: ApiResponse = yield call(postApi, `chats/${chatId}/archive`, {}, header);
+        yield put(archiveChatSuccess(response?.data));
+        goBack();
+    } catch (error: any) {
+        yield put(archiveChatFailure(error));
+        ToastAlert(error?.response?.data?.message || 'Archive Chat Failed');
+    }
+}
+
+export function* muteChatSaga(action: PayloadAction<any>): Generator<any, void, any> {
+    const item = yield select(getItems);
+    const header: ApiHeaders = { Accept: 'application/json', contenttype: 'application/json', accesstoken: item.getTokenResponse };
+    try {
+        const chatId = action.payload?.chatId || action.payload?.chat || action.payload;
+        const response: ApiResponse = yield call(postApi, `chats/${chatId}/mute`, {}, header);
+        yield put(muteChatSuccess(response?.data));
+        goBack();
+    } catch (error: any) {
+        yield put(muteChatFailure(error));
+        ToastAlert(error?.response?.data?.message || 'Mute Chat Failed');
+    }
+}
+
+export function* favoriteChatSaga(action: PayloadAction<any>): Generator<any, void, any> {
+    const item = yield select(getItems);
+    const header: ApiHeaders = { Accept: 'application/json', contenttype: 'application/json', accesstoken: item.getTokenResponse };
+    try {
+        const chatId = action.payload?.chatId || action.payload?.chat || action.payload;
+        const response: ApiResponse = yield call(postApi, `chats/${chatId}/favorite`, {}, header);
+        yield put(favoriteChatSuccess(response?.data));
+        goBack();
+    } catch (error: any) {
+        yield put(favoriteChatFailure(error));
+        ToastAlert(error?.response?.data?.message || 'Favorite Chat Failed');
+    }
+}
+
+export function* unmatchUserSaga(action: PayloadAction<any>): Generator<any, void, any> {
+    const item = yield select(getItems);
+    const header: ApiHeaders = { Accept: 'application/json', contenttype: 'application/json', accesstoken: item.getTokenResponse };
+    try {
+        const chatId = action.payload?.chatId || action.payload?.chat || action.payload;
+        const response: ApiResponse = yield call(postApi, `chats/${chatId}/unmatch`, {}, header);
+        yield put(unmatchUserSuccess(response?.data));
+        goBack();
+    } catch (error: any) {
+        yield put(unmatchUserFailure(error));
+        ToastAlert(error?.response?.data?.message || 'Unmatch User Failed');
+    }
+}
+
 // Watcher Saga
 export function* watchMainSaga(): Generator<any, void, any> {
     yield takeLatest('Main/peopleListRequest', peopleListSaga);
@@ -578,4 +645,8 @@ export function* watchMainSaga(): Generator<any, void, any> {
     yield takeLatest('Main/startChatRequest', startChatSaga);
     yield takeLatest('Main/sendMessageRequest', sendMessageSaga);
     yield takeLatest('Main/markAsReadRequest', markAsReadSaga);
+    yield takeLatest('Main/archiveChatRequest', archiveChatSaga);
+    yield takeLatest('Main/muteChatRequest', muteChatSaga);
+    yield takeLatest('Main/favoriteChatRequest', favoriteChatSaga);
+    yield takeLatest('Main/unmatchUserRequest', unmatchUserSaga);
 }

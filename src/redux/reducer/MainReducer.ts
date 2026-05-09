@@ -28,6 +28,11 @@ export interface MainState {
     startChatRes?: any;
     sendMessageRes?: any;
     markAsReadRes?: any;
+    archiveChatRes?: any;
+    muteChatRes?: any;
+    favoriteChatRes?: any;
+    unmatchUserRes?: any;
+    fcmToken: string;
 }
 
 const initialState: MainState = {
@@ -57,13 +62,20 @@ const initialState: MainState = {
     startChatRes: {},
     sendMessageRes: {},
     markAsReadRes: {},
+    archiveChatRes: {},
+    muteChatRes: {},
+    favoriteChatRes: {},
+    unmatchUserRes: {},
+    fcmToken: '',
 };
 
 const MainSlice = createSlice({
     name: 'Main',
     initialState,
     reducers: {
-
+        storeFcmToken(state, action: PayloadAction<string>) {
+            state.fcmToken = action.payload;
+        },
         //getProfile Setup
         peopleListRequest(state, action: PayloadAction<any>) {
             state.isMainLoading = true;
@@ -322,6 +334,70 @@ const MainSlice = createSlice({
             state.status = action.type;
         },
 
+        // Archive Chat
+        archiveChatRequest(state, action: PayloadAction<any>) {
+            state.isChatLoading = true;
+            state.status = action.type;
+        },
+        archiveChatSuccess(state, action: PayloadAction<any>) {
+            state.isChatLoading = false;
+            state.archiveChatRes = action.payload;
+            state.status = action.type;
+        },
+        archiveChatFailure(state, action: PayloadAction<any>) {
+            state.isChatLoading = false;
+            state.error = action.payload?.error || 'archiveChat failed';
+            state.status = action.type;
+        },
+
+        // Mute Chat
+        muteChatRequest(state, action: PayloadAction<any>) {
+            state.isChatLoading = true;
+            state.status = action.type;
+        },
+        muteChatSuccess(state, action: PayloadAction<any>) {
+            state.isChatLoading = false;
+            state.muteChatRes = action.payload;
+            state.status = action.type;
+        },
+        muteChatFailure(state, action: PayloadAction<any>) {
+            state.isChatLoading = false;
+            state.error = action.payload?.error || 'muteChat failed';
+            state.status = action.type;
+        },
+
+        // Favorite Chat
+        favoriteChatRequest(state, action: PayloadAction<any>) {
+            state.isChatLoading = true;
+            state.status = action.type;
+        },
+        favoriteChatSuccess(state, action: PayloadAction<any>) {
+            state.isChatLoading = false;
+            state.favoriteChatRes = action.payload;
+            state.status = action.type;
+        },
+        favoriteChatFailure(state, action: PayloadAction<any>) {
+            state.isChatLoading = false;
+            state.error = action.payload?.error || 'favoriteChat failed';
+            state.status = action.type;
+        },
+
+        // Unmatch User
+        unmatchUserRequest(state, action: PayloadAction<any>) {
+            state.isChatLoading = true;
+            state.status = action.type;
+        },
+        unmatchUserSuccess(state, action: PayloadAction<any>) {
+            state.isChatLoading = false;
+            state.unmatchUserRes = action.payload;
+            state.status = action.type;
+        },
+        unmatchUserFailure(state, action: PayloadAction<any>) {
+            state.isChatLoading = false;
+            state.error = action.payload?.error || 'unmatchUser failed';
+            state.status = action.type;
+        },
+
         // Append a new real-time message
         appendNewMessage(state, action: PayloadAction<any>) {
             if (Array.isArray(state.chatMessagesRes)) {
@@ -338,6 +414,7 @@ const MainSlice = createSlice({
 
 export const {
 
+    storeFcmToken,
 
     peopleListRequest,
     peopleListSuccess,
@@ -386,6 +463,10 @@ export const {
     startChatRequest, startChatSuccess, startChatFailure,
     sendMessageRequest, sendMessageSuccess, sendMessageFailure,
     markAsReadRequest, markAsReadSuccess, markAsReadFailure,
+    archiveChatRequest, archiveChatSuccess, archiveChatFailure,
+    muteChatRequest, muteChatSuccess, muteChatFailure,
+    favoriteChatRequest, favoriteChatSuccess, favoriteChatFailure,
+    unmatchUserRequest, unmatchUserSuccess, unmatchUserFailure,
     appendNewMessage,
     clearChatMessages,
 

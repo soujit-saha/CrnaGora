@@ -29,7 +29,7 @@ const Signup = ({ route }: any) => {
 
     const dispatch = useDispatch()
     const { isReqLoading, settingRes } = useSelector((state: any) => state.AuthReducer);
-
+    const { fcmToken } = useSelector((state: any) => state.MainReducer);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [modalTitle, setModalTitle] = useState('');
     const [modalContent, setModalContent] = useState('');
@@ -63,7 +63,8 @@ const Signup = ({ route }: any) => {
                 dispatch(socialAuthRequest({
                     email: userInfo?.data?.user?.email,
                     name: userInfo?.data?.user?.name,
-                    provider: 'google'
+                    provider: 'google',
+                    fcm_token: fcmToken
                 }));
             }
         } catch (error: any) {

@@ -84,8 +84,8 @@ const ChatPreview = ({ route }: any) => {
 
   // Handle custom message flow — navigate to Chat without sending opener
   useEffect(() => {
-    if (status === 'Main/startChatSuccess' && startChatRes?.id && isStarting && !selectedOpener) {
-      const chatId = startChatRes.id;
+    if (status === 'Main/startChatSuccess' && startChatRes && isStarting && !selectedOpener) {
+      const chatId = startChatRes.id || startChatRes?.data?.id;
       setIsStarting(false);
       navigate('Chat', {
         chatId,
@@ -101,6 +101,8 @@ const ChatPreview = ({ route }: any) => {
   const userImage = matchUser?.profile_image || 'https://via.placeholder.com/100';
   const userProfession = matchUser?.profession || '';
 
+  // console.log("1234567890", status === 'Main/startChatSuccess' && startChatRes?.id && isStarting && !selectedOpener)
+  // console.log("1234567890", status, startChatRes?.id, startChatRes?.data?.id, isStarting, !selectedOpener)
   return (
     <SafeAreaView style={styles.container}>
       {/* Header Container */}

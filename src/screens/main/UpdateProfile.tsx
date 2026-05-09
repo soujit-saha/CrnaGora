@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     StyleSheet,
     Text,
@@ -25,7 +25,11 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import moment from 'moment';
 import LocationPickerModal from '../../component/LocationPickerModal';
 
+import { useSelector } from 'react-redux';
+
 const UpdateProfile = ({ navigation, route }: any) => {
+    const { getProfileRes } = useSelector((state: any) => state.MainReducer);
+
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [profession, setProfession] = useState('');
@@ -37,6 +41,31 @@ const UpdateProfile = ({ navigation, route }: any) => {
     const [birthdayText, setBirthdayText] = useState('Choose birthday date');
     const [selectedLocationLatLng, setSelectedLocationLatLng] = useState<{ lat: number, lng: number } | null>(null);
     const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
+
+    useEffect(() => {
+        if (getProfileRes?.data) {
+            const profileData = getProfileRes.data;
+            if (profileData.name) {
+                const nameParts = profileData.name.split(' ');
+                setFirstName(nameParts[0] || '');
+                setLastName(nameParts.slice(1).join(' ') || '');
+            }
+            if (profileData.profession) {
+                setProfession(profileData.profession);
+            }
+            if (profileData.location) {
+                setLocation(profileData.location);
+            }
+            if (profileData.profile_image) {
+                setProfileImage({ uri: profileData.profile_image });
+            }
+            if (profileData.dob) {
+                const dobDate = new Date(profileData.dob);
+                setDate(dobDate);
+                setBirthdayText(moment(dobDate).format('DD/MM/YYYY'));
+            }
+        }
+    }, [getProfileRes]);
 
     const onDateChange = (event: any, selectedDate?: Date) => {
         setShowDatePicker(false);
@@ -77,11 +106,11 @@ const UpdateProfile = ({ navigation, route }: any) => {
             dob: moment(date).format('YYYY-MM-DD'),
             profession: profession.trim(),
             location: location.trim(),
-            gallery: profileImage,
+            profile_image: profileImage,
             ...(route?.params || {})
         };
 
-        navigate('Gender', data);
+        navigate('UpdateGender', data);
     };
 
 

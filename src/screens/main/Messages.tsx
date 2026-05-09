@@ -531,12 +531,12 @@ const Messages = () => {
                             </View>
                             <Text style={styles.storyOptionText}>Image</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.storyOptionBtn} onPress={handlePickVideo}>
+                        {/* <TouchableOpacity style={styles.storyOptionBtn} onPress={handlePickVideo}>
                             <View style={[styles.storyOptionIconBg, { backgroundColor: '#E1F5FE' }]}>
                                 <Text style={{ fontSize: normalize(24) }}>📹</Text>
                             </View>
                             <Text style={styles.storyOptionText}>Video</Text>
-                        </TouchableOpacity>
+                        </TouchableOpacity> */}
                         <TouchableOpacity style={styles.storyOptionBtn} onPress={() => {
                             setIsAddStoryModalVisible(false);
                             setIsTextStoryModalVisible(true);
@@ -803,7 +803,8 @@ const styles = StyleSheet.create({
         height: ms(55),
         borderRadius: ms(27.5),
         borderWidth: 2,
-        borderColor: COLORS.primary,
+        // borderColor: COLORS.primary,
+        borderColor: COLORS.lightGray,
         padding: ms(2),
     },
     msgAvatar: {

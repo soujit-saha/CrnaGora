@@ -34,6 +34,9 @@ import Stories from '../screens/main/Stories';
 import ChatPreview from '../screens/main/ChatPreview';
 import Subscription from '../screens/main/Subscription';
 import UpdateProfile from '../screens/main/UpdateProfile';
+import UpdateInterested from '../screens/main/UpdateInterested';
+import UpdateGender from '../screens/main/UpdateGender';
+import UpdatePassion from '../screens/main/UpdatePassion';
 
 type RootStackParamList = {
   SplashScreen: undefined;
@@ -62,6 +65,9 @@ type RootStackParamList = {
   ChatPreview: { matchUser?: any };
   Subscription: undefined;
   UpdateProfile: undefined;
+  UpdateInterested: undefined;
+  UpdateGender: undefined;
+  UpdatePassion: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -95,7 +101,7 @@ export default function StackNav() {
     (state: any) => state.AuthReducer,
   );
 
-  console.log("getTokenResponse", getTokenResponse);
+  // console.log("getTokenResponse", getTokenResponse);
   const Screens: Partial<{
     [key in keyof RootStackParamList]: React.ComponentType<any>;
   }> = getTokenResponse == null ? {
@@ -125,7 +131,9 @@ export default function StackNav() {
         Chat,
         Stories,
         ChatPreview,
-        Subscription, UpdateProfile
+        Subscription, UpdateProfile,
+        UpdateInterested,
+        UpdateGender, UpdatePassion
       };
 
   if (isLoading) {

@@ -18,7 +18,7 @@ import { COLORS, FONTS, ICONS } from '../../utils/constants';
 import { ms, mvs } from '../../utils/helper/metric';
 import normalize from '../../utils/helper/normalize';
 import { goBack } from '../../utils/helper/RootNavigation';
-import { clearChatMessages, deleteStatusRequest, markAsReadRequest } from '../../redux/reducer/MainReducer';
+import { clearChatMessages, deleteStatusRequest, markAsReadRequest, addStatusCommentRequest } from '../../redux/reducer/MainReducer';
 
 const Stories = ({ route }: any) => {
   const dispatch = useDispatch();
@@ -116,6 +116,15 @@ const Stories = ({ route }: any) => {
     );
   }
 
+  const handleSendComment = () => {
+    if (!message.trim()) return;
+    const currentStatus = statuses[currentIndex];
+    if (currentStatus?.id) {
+      dispatch(addStatusCommentRequest({ id: currentStatus.id, comment: message.trim() }));
+      setMessage('');
+    }
+  };
+
   const currentStatus = statuses[currentIndex];
 
   return (
@@ -152,85 +161,89 @@ const Stories = ({ route }: any) => {
 
       {/* UI Overlay Layer */}
       <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-        <SafeAreaView style={styles.container} pointerEvents="box-none">
-          {/* Story Progress Bars */}
-          <View style={styles.progressContainer} pointerEvents="none">
-            {statuses.map((item: any, index: number) => {
-              return (
-                <View key={index} style={styles.progressBarBackground}>
-                  <Animated.View
-                    style={[
-                      styles.progressBarFill,
-                      {
-                        width: index < currentIndex
-                          ? '100%'
-                          : index === currentIndex
-                            ? progress.interpolate({
-                              inputRange: [0, 1],
-                              outputRange: ['0%', '100%'],
-                            })
-                            : '0%'
-                      }
-                    ]}
-                  />
-                </View>
-              );
-            })}
-          </View>
-
-          {/* Top Header Row */}
-          <View style={styles.headerRow} pointerEvents="box-none">
-            <View style={styles.headerLeft} pointerEvents="none">
-              <Image
-                source={{ uri: type == 1 ? getProfileRes?.data?.profile_image : data?.image_path }}
-                style={styles.avatarImage}
-              />
-              <Text style={styles.headerName}>{type == 1 ? getProfileRes?.data?.name : data?.name}</Text>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          pointerEvents="box-none"
+          keyboardVerticalOffset={Platform.OS === 'ios' ? mvs(10) : mvs(10)}
+        >
+          <SafeAreaView style={styles.container} pointerEvents="box-none">
+            {/* Story Progress Bars */}
+            <View style={styles.progressContainer} pointerEvents="none">
+              {statuses.map((item: any, index: number) => {
+                return (
+                  <View key={index} style={styles.progressBarBackground}>
+                    <Animated.View
+                      style={[
+                        styles.progressBarFill,
+                        {
+                          width: index < currentIndex
+                            ? '100%'
+                            : index === currentIndex
+                              ? progress.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: ['0%', '100%'],
+                              })
+                              : '0%'
+                        }
+                      ]}
+                    />
+                  </View>
+                );
+              })}
             </View>
 
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: ms(10) }}>
-
-              {type == 1 && <TouchableOpacity style={styles.closeBtn} onPress={() => onDeleteStatus()}>
-                <Image source={ICONS.delete} style={styles.closeIcon} resizeMode="contain" />
-              </TouchableOpacity>}
-              <TouchableOpacity style={styles.closeBtn} onPress={() => goBack()}>
-                <Image source={ICONS.closeSmall} style={styles.closeIcon} resizeMode="contain" />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Centered Text Content (within available space) */}
-          <View style={styles.middleContent} pointerEvents="none">
-            {currentStatus?.type === 'text' && (
-              <Text style={styles.storyText}>{currentStatus.content}</Text>
-            )}
-          </View>
-
-          {/* Bottom Input Section */}
-          {type == 2 && <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            pointerEvents="box-none"
-          >
-            <View style={styles.bottomRow} pointerEvents="box-none">
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Your message"
-                  placeholderTextColor="rgba(255,255,255,1)"
-                  value={message}
-                  onChangeText={setMessage}
+            {/* Top Header Row */}
+            <View style={styles.headerRow} pointerEvents="box-none">
+              <View style={styles.headerLeft} pointerEvents="none">
+                <Image
+                  source={{ uri: type == 1 ? getProfileRes?.data?.profile_image : data?.image_path }}
+                  style={styles.avatarImage}
                 />
-                {/* <TouchableOpacity style={styles.stickerBtn}>
-                  <Image source={ICONS.stickers} style={styles.stickerIcon} resizeMode="contain" />
-                </TouchableOpacity> */}
+                <Text style={styles.headerName}>{type == 1 ? getProfileRes?.data?.name : data?.name}</Text>
               </View>
 
-              <TouchableOpacity style={styles.sendBtn}>
-                <Image source={ICONS.send} style={styles.sendIcon} resizeMode="contain" />
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: ms(10) }}>
+
+                {type == 1 && <TouchableOpacity style={styles.closeBtn} onPress={() => onDeleteStatus()}>
+                  <Image source={ICONS.delete} style={styles.closeIcon} resizeMode="contain" />
+                </TouchableOpacity>}
+                <TouchableOpacity style={styles.closeBtn} onPress={() => goBack()}>
+                  <Image source={ICONS.closeSmall} style={styles.closeIcon} resizeMode="contain" />
+                </TouchableOpacity>
+              </View>
             </View>
-          </KeyboardAvoidingView>}
-        </SafeAreaView>
+
+            {/* Centered Text Content (within available space) */}
+            <View style={styles.middleContent} pointerEvents="none">
+              {currentStatus?.type === 'text' && (
+                <Text style={styles.storyText}>{currentStatus.content}</Text>
+              )}
+            </View>
+
+            {/* Bottom Input Section */}
+            {type == 2 && (
+              <View style={styles.bottomRow} pointerEvents="box-none">
+                <View style={styles.inputContainer}>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Your message"
+                    placeholderTextColor="rgba(7, 5, 5, 1)"
+                    value={message}
+                    onChangeText={setMessage}
+                  />
+                  {/* <TouchableOpacity style={styles.stickerBtn}>
+                  <Image source={ICONS.stickers} style={styles.stickerIcon} resizeMode="contain" />
+                </TouchableOpacity> */}
+                </View>
+
+                <TouchableOpacity style={styles.sendBtn} onPress={handleSendComment}>
+                  <Image source={ICONS.send} style={styles.sendIcon} resizeMode="contain" />
+                </TouchableOpacity>
+              </View>
+            )}
+          </SafeAreaView>
+        </KeyboardAvoidingView>
       </View>
     </View>
   );

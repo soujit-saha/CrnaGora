@@ -28,6 +28,11 @@ import {
     appendNewMessage,
     clearChatMessages,
     startChatRequest,
+    archiveChatRequest,
+    muteChatRequest,
+    favoriteChatRequest,
+    unmatchUserRequest,
+    matchesBlockRequest,
 } from '../../redux/reducer/MainReducer';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { subscribeToChatChannel } from '../../utils/helper/PusherService';
@@ -37,10 +42,10 @@ const MENU_OPTIONS = [
     'Block',
     'Archive',
     'Unmatch',
-    'Clear Chat',
+    // 'Clear Chat',
     'Mute Notifications',
     'Add to Favorites',
-    'Search',
+    // 'Search',
 ];
 
 const Chat = ({ route }: any) => {
@@ -50,7 +55,7 @@ const Chat = ({ route }: any) => {
     const [showMenu, setShowMenu] = useState(false);
     const [chatId, setChatId] = useState(initialChatId);
     const [isSending, setIsSending] = useState(false);
-
+    console.log("chat id125678", chatId, initialChatId);
     // Audio recording state
     const [isRecording, setIsRecording] = useState(false);
     const [isRecordingPaused, setIsRecordingPaused] = useState(false);
@@ -65,7 +70,7 @@ const Chat = ({ route }: any) => {
             try {
                 Sound.stopPlayer();
                 Sound.removePlaybackEndListener();
-            } catch (e) {}
+            } catch (e) { }
         };
     }, []);
 
@@ -216,6 +221,7 @@ const Chat = ({ route }: any) => {
     // Handle startChat success
     useEffect(() => {
         if (status === 'Main/startChatSuccess' && startChatRes?.id && !chatId) {
+            console.log("chat 9876543", startChatRes.id);
             setChatId(startChatRes.id);
         }
     }, [status, startChatRes]);
@@ -458,8 +464,8 @@ const Chat = ({ route }: any) => {
             } else if (msg.type === 'audio' || msg.type === 'recorded_audio') {
                 const isPlaying = playingAudioId === msg.id;
                 attachmentEl = (
-                    <TouchableOpacity 
-                        style={styles.audioActionBtn} 
+                    <TouchableOpacity
+                        style={styles.audioActionBtn}
                         onPress={() => handleToggleAudio(msg.id, attachUrl)}
                     >
                         <Text style={styles.audioActionIcon}>{isPlaying ? '⏸️' : '▶️'}</Text>
@@ -530,7 +536,8 @@ const Chat = ({ route }: any) => {
                 {/* Center Profile Block */}
                 <View style={styles.headerCenter}>
                     <LinearGradient
-                        colors={['#FF9D33', COLORS.primary]}
+                        colors={[COLORS.lightGray, COLORS.lightGray]}
+                        // colors={['#FF9D33', COLORS.primary]}
                         style={styles.avatarRing}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
@@ -603,7 +610,12 @@ const Chat = ({ route }: any) => {
                                                 style={styles.menuItem}
                                                 onPress={() => {
                                                     setShowMenu(false);
-                                                    if (opt === 'View Profile') navigate('UserProfile');
+                                                    if (opt === 'View Profile') navigate('UserProfile', userId);
+                                                    if (opt === 'Block' && chatId) dispatch(matchesBlockRequest({ id: userId, type: 2 }));
+                                                    if (opt === 'Archive' && chatId) dispatch(archiveChatRequest({ chatId }));
+                                                    if (opt === 'Unmatch' && chatId) dispatch(unmatchUserRequest({ chatId }));
+                                                    if (opt === 'Mute Notifications' && chatId) dispatch(muteChatRequest({ chatId }));
+                                                    if (opt === 'Add to Favorites' && chatId) dispatch(favoriteChatRequest({ chatId }));
                                                 }}
                                             >
                                                 <Text style={styles.menuItemText}>{opt}</Text>

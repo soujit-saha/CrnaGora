@@ -103,7 +103,7 @@ const Matches = () => {
 
     const confirmRemove = () => {
         if (selectedMatch) {
-            dispatch(matchesBlockRequest(selectedMatch.id));
+            dispatch(matchesBlockRequest({ id: selectedMatch.id, type: 1 }));
         }
         // UI Interaction wrap-up
         setIsRemoveModalVisible(false);

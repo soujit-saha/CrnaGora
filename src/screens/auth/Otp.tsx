@@ -25,6 +25,7 @@ const Otp = ({ route }: any) => {
     const { sendOtpRes, isReqLoading } = useSelector(
         (state: any) => state.AuthReducer,
     );
+    const { fcmToken } = useSelector((state: any) => state.MainReducer);
     const dispatch = useDispatch();
     const [otp, setOtp] = useState('');
     const [timer, setTimer] = useState(60);
@@ -67,11 +68,11 @@ const Otp = ({ route }: any) => {
 
 
     const onVerifyOtp = () => {
-
         let data = {
             "identifier": route?.params?.identifier,
             "country_code": route?.params?.country_code,
-            "otp": otp
+            "otp": otp,
+            "fcm_token": fcmToken
         }
 
         connectionrequest()

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -16,7 +16,7 @@ import { ms, mvs } from '../../utils/helper/metric';
 import normalize from '../../utils/helper/normalize';
 import { navigate, goBack } from '../../utils/helper/RootNavigation';
 import connectionrequest from '../../utils/helper/NetInfo';
-import { getPeopleDetailsRequest } from '../../redux/reducer/MainReducer';
+import { getPeopleDetailsRequest, swipeRequest, startChatRequest } from '../../redux/reducer/MainReducer';
 import ToastAlert from '../../utils/helper/Toast';
 import { useDispatch, useSelector } from 'react-redux';
 
@@ -40,7 +40,8 @@ const GALLERY = [
 
 const UserProfile = ({ route }: any) => {
   const dispatch = useDispatch();
-  const { getPeopleDetailsRes } = useSelector((state: any) => state.MainReducer);
+  const [isStartingChat, setIsStartingChat] = useState(false);
+  const { getPeopleDetailsRes, swipeRes, startChatRes, status } = useSelector((state: any) => state.MainReducer);
   const insets = useSafeAreaInsets();
   const item = route.params;
 
@@ -61,6 +62,19 @@ const UserProfile = ({ route }: any) => {
 
   console.log(getPeopleDetailsRes, "getPeopleDetailsRes")
 
+  useEffect(() => {
+    if (status === 'Main/startChatSuccess' && startChatRes && isStartingChat) {
+      setIsStartingChat(false);
+      if (getPeopleDetailsRes?.data) {
+        navigate('Chat', {
+          chatId: startChatRes.data?.id || startChatRes?.id,
+          userId: getPeopleDetailsRes.data.id,
+          userName: getPeopleDetailsRes.data.name,
+          userImage: getPeopleDetailsRes.data.profile_image || getPeopleDetailsRes.data.image_path || 'https://via.placeholder.com/100',
+        });
+      }
+    }
+  }, [status, startChatRes, isStartingChat, getPeopleDetailsRes]);
 
   return (
     <ScrollView
@@ -73,7 +87,7 @@ const UserProfile = ({ route }: any) => {
       {/* Header Cover Image */}
       <ImageBackground
         source={{
-          uri: getPeopleDetailsRes?.data?.profile_image || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
+          uri: getPeopleDetailsRes?.data?.profile_image
         }}
         style={styles.coverImage}
         resizeMode="cover"
@@ -90,7 +104,12 @@ const UserProfile = ({ route }: any) => {
 
         {/* Floating Actions Strip */}
         <View style={styles.floatingActionsRow}>
-          <TouchableOpacity style={styles.floatBtnSmall}>
+          <TouchableOpacity style={styles.floatBtnSmall} onPress={() => {
+              if (getPeopleDetailsRes?.data?.id) {
+                  dispatch(swipeRequest({ target_id: getPeopleDetailsRes.data.id, type: 'left' }));
+                  goBack();
+              }
+          }}>
             <Image
               source={ICONS.closeSmall}
               style={[styles.actionIconColor]}
@@ -98,7 +117,12 @@ const UserProfile = ({ route }: any) => {
             />
           </TouchableOpacity>
 
-          <TouchableOpacity style={{ ...styles.floatBtnSmall, backgroundColor: COLORS.primaryLight }}>
+          <TouchableOpacity style={{ ...styles.floatBtnSmall, backgroundColor: COLORS.primaryLight }} onPress={() => {
+              if (getPeopleDetailsRes?.data?.id) {
+                  setIsStartingChat(true);
+                  dispatch(startChatRequest({ user_ids: [getPeopleDetailsRes.data.id] }));
+              }
+          }}>
             <Image
               source={ICONS.message}
               style={styles.actionIconColor}
@@ -106,7 +130,12 @@ const UserProfile = ({ route }: any) => {
             />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.floatBtnSmall}>
+          <TouchableOpacity style={styles.floatBtnSmall} onPress={() => {
+              if (getPeopleDetailsRes?.data?.id) {
+                  dispatch(swipeRequest({ target_id: getPeopleDetailsRes.data.id, type: 'right' }));
+                  goBack();
+              }
+          }}>
             <Image
               source={ICONS.like}
               style={[styles.actionIconColor, { height: ms(35), width: ms(35) }]}

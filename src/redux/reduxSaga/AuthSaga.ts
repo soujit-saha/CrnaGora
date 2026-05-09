@@ -11,6 +11,8 @@ import {
   logoutSuccess,
   profileSetUpFailure,
   profileSetUpSuccess,
+  profileUpdateFailure,
+  profileUpdateSuccess,
 
   socialAuthSuccess,
   socialAuthFailure,
@@ -349,7 +351,7 @@ export function* profileSetUpSaga(
     //     }
     //   },
     // );
-    console.log('39', formData);
+    // console.log('39', formData);
 
 
     const response: ApiResponse = yield call(
@@ -369,6 +371,70 @@ export function* profileSetUpSaga(
     console.log(error);
     yield put(profileSetUpFailure(error));
     ToastAlert(error?.response?.data?.message || 'Profile Setup Failed');
+  }
+}
+
+export function* profileUpdateSaga(
+  action: PayloadAction<any>,
+): Generator<any, void, any> {
+  const item = yield select(getItems);
+  const header: ApiHeaders = {
+    Accept: 'application/json',
+    contenttype: 'multipart/form-data',
+    accesstoken: item.getTokenResponse || item.storeTempTokenRes,
+  };
+  try {
+    const data = action.payload;
+
+    // Build FormData here so the Redux action payload stays serializable
+    const formData = new FormData();
+
+    const scalarFields = [
+      'name',
+      'dob',
+      'gender',
+      'dating_preferences',
+      'profession',
+      'location',
+    ];
+    scalarFields.forEach(key => {
+      if (data[key] !== undefined && data[key] !== null) {
+        formData.append(key, String(data[key]));
+      }
+    });
+
+    // Hobbies – flat array of item IDs
+    (data.hobbies ?? []).forEach((id: any, index: number) => {
+      formData.append(`hobbies[${index}]`, String(id));
+    });
+
+    // Profile image
+    if (data.profile_image?.uri) {
+      formData.append('profile_image', {
+        uri: data.profile_image.uri,
+        name: data.profile_image.name ?? 'profile_image.jpg',
+        type: data.profile_image.type ?? 'image/jpeg',
+      } as any);
+    }
+
+    const response: ApiResponse = yield call(
+      postApi,
+      'setup-profile',
+      formData,
+      header,
+    );
+    console.log('profileUpdateSaga response:', response);
+    if (response?.status == 201 || response?.status == 200) {
+      yield put(profileUpdateSuccess(response?.data));
+      ToastAlert("Profile updated successfully");
+      navigate("BottomTab")
+    } else {
+      yield put(profileUpdateFailure(response?.data));
+    }
+  } catch (error: any) {
+    console.log(error);
+    yield put(profileUpdateFailure(error));
+    ToastAlert(error?.response?.data?.message || 'Profile Update Failed');
   }
 }
 
@@ -395,6 +461,12 @@ export function* notificationSetUpSaga(
       'age_range_end',
       'age_range_start',
       'dating_preferences',
+
+      'name',
+      'dob',
+      'gender',
+      'profession',
+      'location',
     ];
 
     scalarFields.forEach(key => {
@@ -402,6 +474,20 @@ export function* notificationSetUpSaga(
         formData.append(key, String(data[key]));
       }
     });
+
+    // Hobbies – flat array of item IDs
+    (data.hobbies ?? []).forEach((id: any, index: number) => {
+      formData.append(`hobbies[${index}]`, String(id));
+    });
+
+    // Profile image
+    if (data.profile_image?.uri) {
+      formData.append('profile_image', {
+        uri: data.profile_image.uri,
+        name: data.profile_image.name ?? 'profile_image.jpg',
+        type: data.profile_image.type ?? 'image/jpeg',
+      } as any);
+    }
 
 
 
@@ -489,6 +575,7 @@ export function* watchAuthSaga(): Generator<any, void, any> {
   yield takeLatest('Auth/getTokenRequest', getTokenSaga);
   yield takeLatest('Auth/logoutRequest', logoutSaga);
   yield takeLatest('Auth/profileSetUpRequest', profileSetUpSaga);
+  yield takeLatest('Auth/profileUpdateRequest', profileUpdateSaga);
   yield takeLatest('Auth/notificationSetUpRequest', notificationSetUpSaga);
   yield takeLatest('Auth/socialAuthRequest', socialAuthSaga);
   yield takeLatest('Auth/sendOtpRequest', sendOtpSaga);
